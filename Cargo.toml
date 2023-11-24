@@ -1,0 +1,30 @@
+[package]
+name = "party_chrasher"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+symphonia = { version = "0.5.3", features = ["all"] }
+lazy_static = "1.4.0"
+log = { version = "0.4", features = ["release_max_level_info"] }
+pretty_env_logger = "0.5"
+actix-web = "4.4.0"
+serde = { version = "1.0.193", features = ["derive"] }
+serde_json = "1.0.108"
+actix-web-actors = "4.2.0"
+actix-ws = "0.2.5"
+actix-files = "0.6.2"
+actix = "0.13.1"
+
+
+[target.'cfg(target_os = "linux")'.dependencies]
+libpulse-binding = "2.5.0"
+libpulse-simple-binding = "2.5.0"
+
+[target.'cfg(not(target_os = "linux"))'.dependencies]
+arrayvec = "0.7.1"
+cpal = "0.15"
+rb = "0.4"
+rubato = "0.14"
