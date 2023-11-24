@@ -37,7 +37,7 @@ async fn main() {
     });
 
     // Web application
-    // web_app::start_webapp(sender.clone(), manager.clone()).await;
+    web_app::start_webapp(sender.clone(), manager.clone()).await;
 
     // display updates
     // std::thread::spawn(move || loop {
