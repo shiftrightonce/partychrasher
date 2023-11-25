@@ -1,4 +1,3 @@
-use std::io::Write;
 use std::{fs::File, path::Path};
 
 use symphonia::core::codecs::FinalizeResult;
