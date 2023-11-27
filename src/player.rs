@@ -1,4 +1,7 @@
+use std::fmt::Display;
 use std::{fs::File, path::Path};
+
+use actix::prelude::*;
 
 use symphonia::core::codecs::FinalizeResult;
 use symphonia::core::errors::{Error, Result};
@@ -81,11 +84,28 @@ pub(crate) enum PlayerCommand {
     Play(String),
 }
 
+#[derive(Message)]
+#[rtype(result = "()")]
 pub(crate) enum PlayerUpdate {
     Progress {
         position: (u64, u64, f64),
-        total: u64,
+        total: (u64, u64, f64),
     },
+}
+
+impl Display for PlayerUpdate {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Progress {
+                position: (h, m, s),
+                total: (th, tm, ts),
+            } => {
+                let total = format!("{{\"h\": {}, \"m\": {}, \"s\": {}}}", th, tm, ts);
+                let pos = format!("{{\"h\": {}, \"m\": {}, \"s\": {}}}", h, m, s);
+                write!(f, "{{\"pos\": {}, \"total\": {} }}", pos, total)
+            }
+        }
+    }
 }
 
 fn play_music(
