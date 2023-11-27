@@ -41,5 +41,6 @@ pub(crate) fn handle_request(sender: std::sync::mpsc::Sender<PlayerCommand>) {
             _ => (),
         }
         std::thread::sleep(std::time::Duration::from_millis(100));
+        _ = std::io::stdout().flush();
     }
 }
