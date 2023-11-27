@@ -16,7 +16,7 @@ pub(crate) fn setup_queue_manager(
     let (queue_sender, receiver) = std::sync::mpsc::channel::<QueueManagerCommand>();
     let mut manager = QueueManager::new(sender);
     std::thread::spawn(move || loop {
-        if let Ok(cmd) = receiver.recv() {
+        if let Ok(cmd) = receiver.try_recv() {
             match cmd {
                 QueueManagerCommand::Next => manager.next(),
                 QueueManagerCommand::Previous => manager.previous(),
