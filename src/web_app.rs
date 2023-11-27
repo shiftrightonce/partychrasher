@@ -31,11 +31,14 @@ pub(crate) async fn start_webapp(
         std::thread::sleep(std::time::Duration::from_millis(1));
     });
 
+    let the_app_config = Data::new(config.clone());
+
     _ = HttpServer::new(move || {
         App::new()
             .app_data(Data::new(player_sender.clone()))
             .app_data(Data::new(queue_manager_sender.clone()))
             .app_data(Data::new(server.clone()))
+            .app_data(the_app_config.clone())
             .route("/hey", web::get().to(hello_world))
             .route("/play", web::post().to(play_track))
             .route("/cmd", web::post().to(command))
