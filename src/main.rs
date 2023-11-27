@@ -1,15 +1,12 @@
-use actix_web::{
-    web::{self, Data},
-    App, HttpServer,
-};
-use player::PlayerUpdate;
-
-use crate::player::PlayerCommand;
+use config::ConfigBuilder;
+use thread_channels::setup_threads;
 
 mod cli;
+mod config;
 mod output;
 mod player;
 mod queue_manager;
+mod thread_channels;
 mod web_app;
 mod websocket;
 
@@ -19,34 +16,15 @@ mod resampler;
 #[actix_web::main]
 async fn main() {
     pretty_env_logger::init();
-    let (sender, receiver) = std::sync::mpsc::channel::<PlayerCommand>();
-    let (sync_sender, sync_receiver) = std::sync::mpsc::channel::<PlayerUpdate>();
 
-    // Queue Manager
-    let manager = queue_manager::setup_queue_manager(sender.clone());
+    let app_config = ConfigBuilder::new()
+        .enable_cli(true) // Hardcoded  for now
+        .enable_ws(true) // Hardcoded for now
+        .build();
 
-    // Actual player
-    std::thread::spawn(move || {
-        player::handle_request(receiver, sync_sender.clone());
-    });
-
-    // Cli for quick debugging
-    let sender1 = sender.clone();
-    std::thread::spawn(move || {
-        cli::handle_request(sender1.clone());
-    });
+    // Setup all the os threads and mpsc channels
+    let (ws_rx, cmd_tx, queue_manager_tx) = setup_threads(&app_config);
 
     // Web application
-    web_app::start_webapp(sender.clone(), manager.clone()).await;
-
-    // display updates
-    // std::thread::spawn(move || loop {
-    //     if let Ok(update) = sync_receiver.recv() {
-    //         match update {
-    //             PlayerUpdate::Progress { position, total } => {
-    //                 println!("{:?}/{}", position, total);
-    //             }
-    //         }
-    //     }
-    // });
+    web_app::start_webapp(&app_config, cmd_tx.clone(), queue_manager_tx.clone(), ws_rx).await;
 }
