@@ -630,26 +630,26 @@ fn print_progress(
     if let Some(tb) = tb {
         let t = tb.calc_time(ts);
 
-        let hours = t.seconds / (60 * 60);
-        let mins = (t.seconds % (60 * 60)) / 60;
-        let secs = f64::from((t.seconds % 60) as u32) + t.frac;
+        let p_hours = t.seconds / (60 * 60);
+        let p_mins = (t.seconds % (60 * 60)) / 60;
+        let p_secs = f64::from((t.seconds % 60) as u32) + t.frac;
 
         if let Some(dur) = dur {
-            let d = tb.calc_time(dur.saturating_sub(ts));
+            let d = tb.calc_time(dur);
 
-            let hours = d.seconds / (60 * 60);
-            let mins = (d.seconds % (60 * 60)) / 60;
-            let secs = f64::from((d.seconds % 60) as u32) + d.frac;
+            let t_hours = d.seconds / (60 * 60);
+            let t_mins = (d.seconds % (60 * 60)) / 60;
+            let t_secs = f64::from((d.seconds % 60) as u32) + d.frac;
 
-            // _ = sync_sender.send(PlayerUpdate::Progress {
-            //     position: (hours, mins, secs),
-            //     total: d.seconds,
-            // });
+            _ = sync_sender.send(PlayerUpdate::Progress {
+                position: (p_hours, p_mins, p_secs),
+                total: (t_hours, t_mins, t_secs),
+            });
         } else {
-            // _ = sync_sender.send(PlayerUpdate::Progress {
-            //     position: (hours, mins, secs),
-            //     total: 0,
-            // });
+            _ = sync_sender.send(PlayerUpdate::Progress {
+                position: (p_hours, p_mins, p_secs),
+                total: Default::default(),
+            });
         }
     }
 }
