@@ -1,6 +1,7 @@
 use std::io::Write;
 
 use crate::player::PlayerCommand;
+const LOG_TARGET: &str = "cli";
 
 pub(crate) fn handle_request(sender: std::sync::mpsc::Sender<PlayerCommand>) {
     loop {
@@ -19,20 +20,20 @@ pub(crate) fn handle_request(sender: std::sync::mpsc::Sender<PlayerCommand>) {
                     match pieces.first().as_ref().unwrap().as_str() {
                         "play" => {
                             if pieces.len() > 1 {
-                                println!("CLI: sending play command");
+                                log::debug!(target: LOG_TARGET,"sending play command");
                                 let path = pieces[1..].join(" ");
                                 _ = sender.send(PlayerCommand::Play(path));
                             }
                         }
                         "pause" => {
-                            println!("CLI: sending pause command");
+                            log::debug!(target: LOG_TARGET,"sending pause command");
                             _ = sender.send(PlayerCommand::Pause)
                         }
                         "resume" => {
-                            println!("CLI: sending resume command");
+                            log::debug!(target: LOG_TARGET,"sending resume command");
                             _ = sender.send(PlayerCommand::Resume)
                         }
-                        "exit" => panic!("exit..."),
+                        "exit" => std::process::exit(0),
                         _ => (),
                     }
                 }
