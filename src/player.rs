@@ -70,6 +70,7 @@ pub(crate) fn handle_request(
                 }
             }
         }
+        std::thread::sleep(std::time::Duration::from_millis(100));
     }
 }
 

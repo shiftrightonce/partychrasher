@@ -28,6 +28,7 @@ pub(crate) fn setup_queue_manager(
                 }
             }
         }
+        std::thread::sleep(std::time::Duration::from_millis(100));
     });
 
     queue_sender

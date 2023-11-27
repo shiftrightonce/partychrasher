@@ -1,17 +1,41 @@
-use crate::{player::PlayerCommand, queue_manager::QueueManagerCommand, websocket};
+use actix::*;
+use std::sync::{atomic::AtomicUsize, Arc};
+
+use crate::{
+    config::Config,
+    player::{PlayerCommand, PlayerUpdate},
+    queue_manager::QueueManagerCommand,
+    websocket::{self, server},
+};
 use actix_web::{
     web::{self, Data},
     App, HttpServer,
 };
 
 pub(crate) async fn start_webapp(
+    config: &Config,
     player_sender: std::sync::mpsc::Sender<PlayerCommand>,
     queue_manager_sender: std::sync::mpsc::Sender<QueueManagerCommand>,
+    mut b_receiver: tokio::sync::mpsc::UnboundedReceiver<PlayerUpdate>,
 ) {
+    let app_state = Arc::new(AtomicUsize::new(0));
+
+    // start chat server actor
+    let server = server::ChatServer::new(app_state.clone()).start();
+    let server_copy = server.clone();
+
+    std::thread::spawn(move || loop {
+        if let Ok(msg) = b_receiver.try_recv() {
+            server_copy.do_send(msg)
+        }
+        std::thread::sleep(std::time::Duration::from_millis(1));
+    });
+
     _ = HttpServer::new(move || {
         App::new()
             .app_data(Data::new(player_sender.clone()))
             .app_data(Data::new(queue_manager_sender.clone()))
+            .app_data(Data::new(server.clone()))
             .route("/hey", web::get().to(hello_world))
             .route("/play", web::post().to(play_track))
             .route("/cmd", web::post().to(command))
