@@ -20,6 +20,8 @@ use log::warn;
 
 use crate::output;
 
+const LOG_TARGET: &str = "player";
+
 enum InternalPlayerCommands {
     Stop,
     Pause,
@@ -33,13 +35,13 @@ pub(crate) fn handle_request(
     let mut current_sender: Option<std::sync::mpsc::Sender<InternalPlayerCommands>> = None;
     loop {
         if let Ok(command) = receiver.try_recv() {
-            log::debug!("handling command: {:?}", &command);
+            log::debug!(target: LOG_TARGET,"handling command: {:?}", &command);
             let sync_sender_clone = sync_sender.clone();
 
             match &command {
                 PlayerCommand::Pause => {
                     if current_sender.is_some() {
-                        println!("PLAYER: Pausing play");
+                        log::debug!(target: LOG_TARGET,"pausing play");
                         _ = current_sender
                             .as_ref()
                             .unwrap()
@@ -47,7 +49,7 @@ pub(crate) fn handle_request(
                     }
                 }
                 PlayerCommand::Resume => {
-                    println!("PLAYER: Resume play");
+                    log::debug!(target: LOG_TARGET,"resuming play");
                     _ = current_sender
                         .as_ref()
                         .unwrap()
@@ -63,7 +65,7 @@ pub(crate) fn handle_request(
                     let (sender, receiver) = std::sync::mpsc::channel::<InternalPlayerCommands>();
                     current_sender = Some(sender);
 
-                    println!("PLAYER: Playing \"{:?}\"", &path);
+                    log::debug!(target: LOG_TARGET,"playing \"{:?}\"", &path);
 
                     // TODO: Make the abrupt stop easy to the ears. Example cross fade or something
                     let the_path = path.clone().to_string();
@@ -113,7 +115,7 @@ fn play_music(
     receiver: std::sync::mpsc::Receiver<InternalPlayerCommands>,
     sync_sender: std::sync::mpsc::Sender<PlayerUpdate>,
 ) {
-    println!("playing track: {}", path);
+    log::debug!(target: LOG_TARGET,"playing track: {}", path);
     let mut hint = Hint::new();
     let path = Path::new(path);
 
