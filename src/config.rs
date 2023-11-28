@@ -4,6 +4,8 @@ pub(crate) struct Config {
     enable_ws: bool,
     http_host: String,
     http_port: u16,
+    db_path: String,
+    // TODO: Add entry to disable developer documentation endpoints
 }
 
 impl Default for Config {
@@ -13,6 +15,7 @@ impl Default for Config {
             enable_ws: true,
             http_host: "0.0.0.0".to_string(),
             http_port: 8080,
+            db_path: "./db/data.db".to_string(),
         }
     }
 }
@@ -33,6 +36,10 @@ impl Config {
     pub(crate) fn http_port(&self) -> u16 {
         self.http_port
     }
+
+    pub(crate) fn db_path(&self) -> String {
+        self.db_path.clone()
+    }
 }
 
 #[derive(Debug, Default)]
@@ -41,6 +48,7 @@ pub(crate) struct ConfigBuilder {
     enable_ws: Option<bool>,
     http_host: Option<String>,
     http_port: Option<u16>,
+    db_path: Option<String>,
 }
 
 impl ConfigBuilder {
@@ -66,6 +74,11 @@ impl ConfigBuilder {
 
     pub(crate) fn http_port(mut self, port: u16) -> Self {
         self.http_port = Some(port);
+        self
+    }
+
+    pub(crate) fn db_path(mut self, path: &str) -> Self {
+        self.db_path = Some(path.to_string());
         self
     }
 

@@ -12,6 +12,21 @@ use actix_web::{
     App, HttpServer,
 };
 
+use self::{
+    admin::handle_admin_command,
+    docs::dev_docs_index_handler,
+    query::{
+        handle_get_playlist_query, handle_next_query, handle_previous_query,
+        handle_track_info_query, handle_track_search,
+    },
+    user::handle_user_command,
+};
+
+mod admin;
+mod docs;
+mod query;
+mod user;
+
 pub(crate) async fn start_webapp(
     config: &Config,
     player_sender: std::sync::mpsc::Sender<PlayerCommand>,
@@ -39,19 +54,38 @@ pub(crate) async fn start_webapp(
             .app_data(Data::new(queue_manager_sender.clone()))
             .app_data(Data::new(server.clone()))
             .app_data(the_app_config.clone())
-            .route("/hey", web::get().to(hello_world))
+            .service(actix_files::Files::new("/assets", "./static"))
+            .route("/api/v1/user-command", web::post().to(handle_user_command))
+            .route(
+                "/api/v1/admin-command",
+                web::post().to(handle_admin_command),
+            )
+            .route("/api/v1/query/next", web::get().to(handle_next_query))
+            .route(
+                "/api/v1/query/previous",
+                web::get().to(handle_previous_query),
+            )
+            .route(
+                "/api/v1/query/playlist",
+                web::get().to(handle_get_playlist_query),
+            )
+            .route(
+                "/api/v1/query/info/{track}",
+                web::get().to(handle_track_info_query),
+            )
+            .route(
+                "/api/v1/query/search/{keyword}",
+                web::get().to(handle_track_search),
+            )
             .route("/play", web::post().to(play_track))
             .route("/cmd", web::post().to(command))
             .route("/ws", web::get().to(websocket::handle_websocket))
+            .route("/dev-docs", web::get().to(dev_docs_index_handler))
     })
     .bind(("0.0.0.0", 8080))
     .expect("could not bind to port: 8080")
     .run()
     .await;
-}
-
-async fn hello_world() -> impl actix_web::Responder {
-    "Hello world, we are ready to go"
 }
 
 #[derive(Debug, serde::Deserialize, serde::Serialize)]
