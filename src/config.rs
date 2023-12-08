@@ -2,6 +2,7 @@
 pub(crate) struct Config {
     enable_cli: bool,
     enable_ws: bool,
+    enable_web: bool,
     http_host: String,
     http_port: u16,
     db_path: String,
@@ -13,6 +14,7 @@ impl Default for Config {
         Self {
             enable_cli: false,
             enable_ws: true,
+            enable_web: true,
             http_host: "0.0.0.0".to_string(),
             http_port: 8080,
             db_path: "./db/data.db".to_string(),
@@ -27,6 +29,10 @@ impl Config {
 
     pub(crate) fn is_ws_enabled(&self) -> bool {
         self.enable_ws
+    }
+
+    pub(crate) fn is_web_enabled(&self) -> bool {
+        self.enable_web
     }
 
     pub(crate) fn http_host(&self) -> String {
@@ -46,6 +52,7 @@ impl Config {
 pub(crate) struct ConfigBuilder {
     enable_cli: Option<bool>,
     enable_ws: Option<bool>,
+    enable_web: Option<bool>,
     http_host: Option<String>,
     http_port: Option<u16>,
     db_path: Option<String>,
@@ -64,6 +71,11 @@ impl ConfigBuilder {
 
     pub(crate) fn enable_ws(mut self, enable: bool) -> Self {
         self.enable_ws = Some(enable);
+        self
+    }
+
+    pub(crate) fn enable_web(mut self, enable: bool) -> Self {
+        self.enable_web = Some(enable);
         self
     }
 
@@ -87,6 +99,7 @@ impl ConfigBuilder {
 
         the_config.enable_cli = self.enable_cli.unwrap_or(the_config.enable_cli);
         the_config.enable_ws = self.enable_ws.unwrap_or(the_config.enable_ws);
+        the_config.enable_web = self.enable_web.unwrap_or(the_config.enable_web);
         the_config.http_host = self.http_host.unwrap_or(the_config.http_host);
         the_config.http_port = self.http_port.unwrap_or(the_config.http_port);
 

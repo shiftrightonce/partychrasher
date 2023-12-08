@@ -3,12 +3,6 @@ pub(crate) async fn handle_admin_command() -> impl actix_web::Responder {
 }
 
 #[derive(Debug, serde::Deserialize)]
-enum Command {
-    Player(AdminPlayerCommand),
-    Manage(AdminManageCommand),
-}
-
-#[derive(Debug, serde::Deserialize)]
 pub(crate) enum AdminPlayerCommand {
     #[serde(rename(deserialize = "play"))]
     Play(String),
@@ -26,14 +20,4 @@ pub(crate) enum AdminPlayerCommand {
     Next,
     #[serde(rename(deserialize = "previous"))]
     Previous,
-}
-
-#[derive(Debug, serde::Deserialize)]
-pub(crate) enum AdminManageCommand {
-    #[serde(rename(deserialize = "add_client"))]
-    AddClient(String), // Add a new client device
-    #[serde(rename(deserialize = "remove_client"))]
-    RemoveClient(String), // Remove a client device
-    #[serde(rename(deserialize = "reset_client"))]
-    Reset(String), // Resets a client token
 }

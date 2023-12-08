@@ -1,16 +1,20 @@
-use std::{str::FromStr, sync::Arc, time::Duration};
+use std::{collections::HashMap, fmt::Display, str::FromStr, sync::Arc, time::Duration};
 
+use actix_web::{web::Query, HttpRequest};
+use base64::{
+    alphabet::{self, Alphabet},
+    engine,
+};
 use sqlx::{
     sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePoolOptions},
     SqlitePool,
 };
+use symphonia::core::io::vlc::CodebookEntry;
 
 use crate::{
     config::Config,
-    entity::{ClientEntity, ClientRepo, FromSqliteRow, Role},
-    sql::{
-        count_clients_by_role, create_new_client, find_record_by_internal_id, setup_clients_table,
-    },
+    entity::client::{ClientEntity, ClientRepo},
+    helper::{base64_decode, base64_decode_to_string, base64_encode},
 };
 
 pub(crate) type DbConnection = SqlitePool;
@@ -44,31 +48,211 @@ impl DbManager {
         Self { pool }
     }
 
-    pub(crate) fn pool(&self) -> &DbConnection {
-        &self.pool
-    }
-
     pub(crate) fn client_repo(&self) -> ClientRepo {
         ClientRepo::new(self.pool.clone())
     }
 
     pub(crate) async fn setup_db(&self) {
         if let Some(client) = self.client_repo().setup_table().await {
-            println!("-------- Default Admin created --------");
-            println!("Admin ID          : {}", &client.id);
-            println!("Admin API Secret  : {}", &client.api_secret);
+            println!("Admin API Token: {}", &client.api_token());
+
+            if let Some(user) = self
+                .client_repo()
+                .create(ClientEntity::default_user().into())
+                .await
+            {
+                println!("User API Token: {}", &user.api_token());
+            }
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub(crate) enum PaginatorDirection {
+    Next,
+    Previous,
+}
+
+impl Default for PaginatorDirection {
+    fn default() -> Self {
+        Self::Next
+    }
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct Paginator {
+    pub(crate) current: u64,
+    pub(crate) next: u64,
+    pub(crate) previous: u64,
+    pub(crate) limit: u64,
+    pub(crate) last_value: String,
+    pub(crate) direction: PaginatorDirection,
+    pub(crate) order_field: String,
+}
+
+impl Default for Paginator {
+    fn default() -> Self {
+        Self {
+            current: 0,
+            next: 1,
+            previous: 0,
+            limit: 250,
+            last_value: "".to_string(),
+            direction: PaginatorDirection::Next,
+            order_field: "id".to_string(),
+        }
+    }
+}
+
+impl Display for Paginator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let direction = match self.direction {
+            PaginatorDirection::Next => "n",
+            PaginatorDirection::Previous => "p",
+        };
+        let string = format!(
+            "{}.{}.{}.{}.{}.{}.{}",
+            self.current,
+            self.next,
+            self.previous,
+            direction,
+            self.order_field,
+            self.limit,
+            self.last_value
+        );
+
+        write!(f, "{}", base64_encode(&string))
+    }
+}
+
+impl Paginator {
+    pub(crate) fn next_from_current(current: &Self) -> Self {
+        Self {
+            current: current.next,
+            next: current.next + 1,
+            limit: current.limit,
+            last_value: current.last_value.clone(),
+            previous: if current.next > 0 {
+                current.next - 1
+            } else {
+                0
+            },
+            order_field: current.order_field.clone(),
+            direction: PaginatorDirection::Next,
         }
     }
 
-    pub(crate) async fn insert_client(&self, client: ClientEntity) -> Option<ClientEntity> {
-        create_new_client(&self.pool, client).await
+    pub(crate) fn previous_from_current(current: &Self) -> Self {
+        Self {
+            current: current.previous,
+            next: current.next,
+            limit: current.limit,
+            last_value: current.last_value.clone(),
+            previous: if current.previous > 0 {
+                current.previous - 1
+            } else {
+                0
+            },
+            order_field: current.order_field.clone(),
+            direction: PaginatorDirection::Previous,
+        }
     }
 
-    pub(crate) async fn count_clients_by_role(&self, role: Role) -> i64 {
-        count_clients_by_role(&self.pool, role).await
-    }
+    pub(crate) fn to_collection(&self) -> HashMap<String, String> {
+        let mut collection = HashMap::new();
 
-    pub(crate) async fn has_default_admin(&self) -> bool {
-        self.count_clients_by_role(Role::Admin).await > 0
+        collection.insert("current".to_string(), self.to_string());
+        collection.insert(
+            "next".to_string(),
+            Self::next_from_current(self).to_string(),
+        );
+        collection.insert(
+            "previous".to_string(),
+            Self::previous_from_current(self).to_string(),
+        );
+
+        collection
+    }
+}
+
+impl From<String> for Paginator {
+    fn from(value: String) -> Self {
+        let mut pieces = value.split('.');
+        let mut default = Self::default();
+
+        // current
+        if let Some(current) = pieces.next() {
+            default.current = current.parse().unwrap_or(default.current);
+        }
+
+        // next
+        if let Some(next) = pieces.next() {
+            default.next = next.parse().unwrap_or(default.next);
+        }
+
+        // previous
+        if let Some(previous) = pieces.next() {
+            default.previous = previous.parse().unwrap_or(default.previous);
+        }
+
+        // direction
+        if let Some(direction) = pieces.next() {
+            default.direction = match direction {
+                "n" => PaginatorDirection::Next,
+                "p" => PaginatorDirection::Previous,
+                _ => PaginatorDirection::default(),
+            };
+        }
+
+        // order_field
+        if let Some(order_field) = pieces.next() {
+            default.order_field = order_field.to_string();
+        }
+
+        // limit
+        if let Some(limit) = pieces.next() {
+            default.limit = limit.parse().unwrap_or(default.limit)
+        }
+
+        // last value
+        if let Some(last_value) = pieces.next() {
+            default.last_value = last_value.to_string()
+        }
+
+        default
+    }
+}
+
+impl TryFrom<&HttpRequest> for Paginator {
+    type Error = String;
+
+    fn try_from(value: &HttpRequest) -> Result<Self, Self::Error> {
+        let query = Query::<HashMap<String, String>>::from_query(value.query_string()).unwrap();
+        if let Some(page) = query.get("page") {
+            Ok(if let Some(the_string) = base64_decode_to_string(page) {
+                Paginator::from(the_string)
+            } else {
+                Paginator::default()
+            })
+        } else {
+            // TODO: Source the paginator pieces if they exist for example
+            //       page_index, page_field, page_limit, page_dir,
+            Ok(Paginator::default())
+        }
+    }
+}
+
+#[derive(serde::Serialize)]
+pub(crate) struct PaginatedResult<T: serde::Serialize> {
+    page: T,
+    paginators: HashMap<String, String>,
+}
+
+impl<T: serde::Serialize> PaginatedResult<T> {
+    pub(crate) fn new(page: T, paginator: &Paginator) -> Self {
+        Self {
+            page,
+            paginators: paginator.to_collection(),
+        }
     }
 }

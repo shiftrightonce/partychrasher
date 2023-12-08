@@ -1,15 +1,10 @@
 use std::fmt::Display;
 
-mod client_entity;
+pub(crate) mod client;
 
 use sqlx::sqlite::SqliteRow;
 
-pub(crate) use client_entity::ClientEntity;
-pub(crate) use client_entity::ClientRepo;
-pub(crate) use client_entity::InClientEntityDto;
-pub(crate) use client_entity::OutClientEntityDtb;
-
-#[derive(Debug, serde::Deserialize, serde::Serialize)]
+#[derive(Debug, Clone, serde::Deserialize, serde::Serialize, PartialEq)]
 pub(crate) enum Role {
     #[serde(rename(deserialize = "admin", serialize = "admin"))]
     Admin,
@@ -20,8 +15,8 @@ pub(crate) enum Role {
 impl Display for Role {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Admin => write!(f, "{}", "admin"),
-            Self::User => write!(f, "{}", "user"),
+            Self::Admin => write!(f, "admin"),
+            Self::User => write!(f, "user"),
         }
     }
 }

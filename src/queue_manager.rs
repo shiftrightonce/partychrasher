@@ -56,10 +56,7 @@ impl QueueManager {
 
     pub(crate) fn previous(&mut self) {
         let mut index = self.current.load(std::sync::atomic::Ordering::Relaxed);
-        if index != 0 {
-            index = index - 1;
-        }
-
+        index = index.saturating_sub(1);
         self.play_by_index_and_set(index);
     }
 

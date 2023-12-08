@@ -56,11 +56,8 @@ pub(crate) fn handle_request(
                         .send(InternalPlayerCommands::Resume);
                 }
                 PlayerCommand::Play(path) => {
-                    if current_sender.is_some() {
-                        _ = current_sender
-                            .as_ref()
-                            .unwrap()
-                            .send(InternalPlayerCommands::Stop);
+                    if let Some(sender) = &current_sender {
+                        _ = sender.send(InternalPlayerCommands::Stop);
                     }
                     let (sender, receiver) = std::sync::mpsc::channel::<InternalPlayerCommands>();
                     current_sender = Some(sender);
@@ -146,32 +143,28 @@ fn play_music(
 
     let track = None;
 
-    match symphonia::default::get_probe().format(&hint, mss, &format_opts, &metadata_opts) {
-        Ok(probed) => {
-            // Playback mode.
-            // println!("{:?}", &mut probed);
+    if let Ok(probed) =
+        symphonia::default::get_probe().format(&hint, mss, &format_opts, &metadata_opts)
+    {
+        // Playback mode.
+        // println!("{:?}", &mut probed);
 
-            // If present, parse the seek argument.
-            let seek_time = Some(0.0);
+        // If present, parse the seek argument.
+        let seek_time = Some(0.0);
 
-            // Set the decoder options.
-            let decode_opts = DecoderOptions {
-                verify: false,
-                ..Default::default()
-            };
+        // Set the decoder options.
+        let decode_opts = DecoderOptions { verify: false };
 
-            // Play it!
-            _ = play(
-                probed.format,
-                track,
-                seek_time,
-                &decode_opts,
-                false,
-                receiver,
-                sync_sender,
-            );
-        }
-        _ => (),
+        // Play it!
+        _ = play(
+            probed.format,
+            track,
+            seek_time,
+            &decode_opts,
+            false,
+            receiver,
+            sync_sender,
+        );
     }
 }
 
@@ -368,7 +361,7 @@ fn play_track(
                 // for the packet is >= the seeked position (0 if not seeking).
                 if packet.ts() >= play_opts.seek_ts {
                     if !no_progress {
-                        print_progress(packet.ts(), dur, tb, &sync_sender);
+                        print_progress(packet.ts(), dur, tb, sync_sender);
                     }
 
                     if let Some(audio_output) = audio_output {

@@ -1,19 +1,28 @@
 use actix::*;
-use std::sync::{atomic::AtomicUsize, Arc};
+use futures::executor::block_on;
+use futures_util::{future::FutureExt, Future};
+use std::{
+    pin::Pin,
+    sync::{atomic::AtomicUsize, Arc},
+};
 
 use crate::{
     config::Config,
+    db::DbManager,
+    entity::client::ClientEntity,
     player::{PlayerCommand, PlayerUpdate},
     queue_manager::QueueManagerCommand,
     websocket::{self, server},
 };
 use actix_web::{
+    dev::Service as _,
     web::{self, Data},
-    App, HttpServer,
+    App, HttpMessage, HttpRequest, HttpResponse, HttpResponseBuilder, HttpServer,
 };
 
 use self::{
     admin::handle_admin_command,
+    api_response::ApiResponse,
     docs::dev_docs_index_handler,
     query::{
         handle_get_playlist_query, handle_next_query, handle_previous_query,
@@ -23,7 +32,10 @@ use self::{
 };
 
 mod admin;
+mod api_response;
+mod auth_middleware;
 mod docs;
+mod manage_client;
 mod query;
 mod user;
 
@@ -32,6 +44,7 @@ pub(crate) async fn start_webapp(
     player_sender: std::sync::mpsc::Sender<PlayerCommand>,
     queue_manager_sender: std::sync::mpsc::Sender<QueueManagerCommand>,
     mut b_receiver: tokio::sync::mpsc::UnboundedReceiver<PlayerUpdate>,
+    db_manager: Arc<DbManager>,
 ) {
     let app_state = Arc::new(AtomicUsize::new(0));
 
@@ -54,28 +67,67 @@ pub(crate) async fn start_webapp(
             .app_data(Data::new(queue_manager_sender.clone()))
             .app_data(Data::new(server.clone()))
             .app_data(the_app_config.clone())
+            .app_data(db_manager.clone())
             .service(actix_files::Files::new("/assets", "./static"))
-            .route("/api/v1/user-command", web::post().to(handle_user_command))
-            .route(
-                "/api/v1/admin-command",
-                web::post().to(handle_admin_command),
-            )
-            .route("/api/v1/query/next", web::get().to(handle_next_query))
-            .route(
-                "/api/v1/query/previous",
-                web::get().to(handle_previous_query),
-            )
-            .route(
-                "/api/v1/query/playlist",
-                web::get().to(handle_get_playlist_query),
-            )
-            .route(
-                "/api/v1/query/info/{track}",
-                web::get().to(handle_track_info_query),
-            )
-            .route(
-                "/api/v1/query/search/{keyword}",
-                web::get().to(handle_track_search),
+            // RESTFUL API version 1
+            .service(
+                web::scope("/api/v1")
+                    .wrap(auth_middleware::Auth)
+                    .wrap_fn(|req, serv| {
+                        if let Some(api_token) = req.headers().get("authorization") {
+                            if let Some(db_manager) = req.app_data::<Arc<DbManager>>() {
+                                let token = api_token
+                                    .to_str()
+                                    .unwrap()
+                                    .split(' ')
+                                    .last()
+                                    .unwrap()
+                                    .to_string();
+
+                                if let Some(client) =
+                                    block_on(db_manager.client_repo().find_by_api_token(&token))
+                                {
+                                    req.extensions_mut().insert(client);
+                                }
+                            }
+                        }
+
+                        serv.call(req).map(|res| res)
+                    })
+                    .route("/user-command", web::post().to(handle_user_command))
+                    .route("/admin-command", web::post().to(handle_admin_command))
+                    .route("/query/next", web::get().to(handle_next_query))
+                    .route("/query/previous", web::get().to(handle_previous_query))
+                    .route("/query/playlist", web::get().to(handle_get_playlist_query))
+                    .route(
+                        "/query/info/{track}",
+                        web::get().to(handle_track_info_query),
+                    )
+                    .route(
+                        "/query/search/{keyword}",
+                        web::get().to(handle_track_search),
+                    )
+                    .route("/manage/clients", web::get().to(manage_client::get_clients))
+                    .route(
+                        "/manage/client/{id}",
+                        web::get().to(manage_client::get_a_client),
+                    )
+                    .route(
+                        "/manage/client",
+                        web::post().to(manage_client::create_client),
+                    )
+                    .route(
+                        "/manage/client/{id}",
+                        web::put().to(manage_client::update_client),
+                    )
+                    .route(
+                        "/manage/client/{id}",
+                        web::delete().to(manage_client::delete_client),
+                    )
+                    .route(
+                        "/manage/client/reset/{id}",
+                        web::get().to(manage_client::reset_token),
+                    ),
             )
             .route("/play", web::post().to(play_track))
             .route("/cmd", web::post().to(command))
@@ -86,6 +138,35 @@ pub(crate) async fn start_webapp(
     .expect("could not bind to port: 8080")
     .run()
     .await;
+}
+
+pub(crate) async fn when_admin<R: serde::Serialize>(
+    req: &HttpRequest,
+) -> (bool, Option<HttpResponse>) {
+    if let Ok(client) = ClientEntity::try_from(req) {
+        if client.is_admin() {
+            return (true, None);
+        }
+    }
+
+    let response = Some(HttpResponse::Forbidden().json(ApiResponse::<R>::error(
+        "Client does not have the admin role",
+    )));
+    (false, response)
+}
+
+pub(crate) async fn when_user<R: serde::Serialize>(
+    req: &HttpRequest,
+) -> (bool, Option<HttpResponse>) {
+    if let Ok(client) = ClientEntity::try_from(req) {
+        if !client.is_user() {
+            return (true, None);
+        }
+    }
+    let response = Some(
+        HttpResponse::Forbidden().json(ApiResponse::<R>::error("Client is not authenticated")),
+    );
+    (false, response)
 }
 
 #[derive(Debug, serde::Deserialize, serde::Serialize)]
@@ -137,7 +218,7 @@ async fn command(
     queue_sender: Data<std::sync::mpsc::Sender<QueueManagerCommand>>,
     payload: web::Json<CommandPayload>,
 ) -> impl actix_web::Responder {
-    let response = match &payload.cmd {
+    match &payload.cmd {
         Command::Play if !payload.data.is_empty() => {
             _ = sender.send(PlayerCommand::Play(payload.data.clone()));
             "handled play command"
@@ -171,7 +252,5 @@ async fn command(
             "handled resume command"
         }
         _ => "nothing to do",
-    };
-
-    response
+    }
 }

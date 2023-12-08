@@ -1,4 +1,10 @@
-pub(crate) async fn handle_next_query() -> impl actix_web::Responder {
+use actix_web::HttpRequest;
+
+use crate::entity::client::ClientEntity;
+
+pub(crate) async fn handle_next_query(req: HttpRequest) -> impl actix_web::Responder {
+    let client = ClientEntity::try_from(&req);
+    println!("current client: {:?}", &client);
     "handle next query" // returns the next track in the queue
 }
 
