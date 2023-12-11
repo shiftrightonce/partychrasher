@@ -20,8 +20,8 @@ pub(crate) fn base64_decode(subject: &str) -> Option<Vec<u8>> {
 }
 
 pub(crate) fn base64_decode_to_string(subject: &str) -> Option<String> {
-    if let Ok(bytes) = base64::engine::general_purpose::STANDARD.decode(subject) {
-        return String::from_utf8(bytes).ok();
+    if let Some(result) = base64_decode(subject) {
+        return String::from_utf8(result).ok();
     }
     None
 }
