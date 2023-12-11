@@ -35,6 +35,7 @@ mod admin;
 mod api_response;
 mod auth_middleware;
 mod docs;
+mod file_server;
 mod manage_client;
 mod query;
 mod user;
@@ -107,6 +108,7 @@ pub(crate) async fn start_webapp(
                         "/query/search/{keyword}",
                         web::get().to(handle_track_search),
                     )
+                    .route("/stream/{id}", web::get().to(file_server::serve))
                     .route("/manage/clients", web::get().to(manage_client::get_clients))
                     .route(
                         "/manage/client/{id}",
