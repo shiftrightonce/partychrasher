@@ -1,10 +1,12 @@
 use std::{
+    collections::HashMap,
     future::{ready, Ready},
     sync::Arc,
 };
 
 use actix_web::{
     dev::{forward_ready, Service, ServiceRequest, ServiceResponse, Transform},
+    web::Query,
     Error, HttpMessage,
 };
 use futures::executor::block_on;
@@ -55,17 +57,31 @@ where
     forward_ready!(service);
 
     fn call(&self, req: ServiceRequest) -> Self::Future {
-        if let Some(api_token) = req.headers().get("authorization") {
-            if let Some(db_manager) = req.app_data::<Arc<DbManager>>() {
-                let token = api_token
-                    .to_str()
-                    .unwrap()
-                    .split(' ')
-                    .last()
-                    .unwrap()
-                    .to_string();
+        let mut api_token = String::new();
+        if let Some(token) = req.headers().get("authorization") {
+            api_token = token
+                .to_str()
+                .unwrap()
+                .split(' ')
+                .last()
+                .unwrap()
+                .to_string();
+        }
 
-                if let Some(client) = block_on(db_manager.client_repo().find_by_api_token(&token)) {
+        if api_token.is_empty() {
+            if let Some(token) = Query::<HashMap<String, String>>::from_query(req.query_string())
+                .unwrap()
+                .get("_token")
+            {
+                api_token = token.clone();
+            }
+        }
+
+        if !api_token.is_empty() {
+            if let Some(db_manager) = req.app_data::<Arc<DbManager>>() {
+                if let Some(client) =
+                    block_on(db_manager.client_repo().find_by_api_token(&api_token))
+                {
                     req.request().extensions_mut().insert(client);
                 }
             }
