@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use actix_web::{
-    error::{ErrorBadRequest, ErrorNotFound, ErrorUnauthorized},
+    error::{ErrorNotFound, ErrorUnauthorized},
     web, HttpRequest,
 };
 
@@ -27,6 +27,9 @@ pub(crate) async fn serve(
     dummy.insert("track4", "./music/dreams.mp3");
     dummy.insert("track5", "./music/lib1.mp3");
     dummy.insert("track6", "./music/lib2.mp3");
+    dummy.insert("video1", "./music/video1.mp4");
+    dummy.insert("video2", "./music/video2.mp4");
+    dummy.insert("video3", "./music/video3.mp4");
 
     let the_id = id.into_inner();
     if let Some(file) = dummy.get(the_id.as_str()) {

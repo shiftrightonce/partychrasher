@@ -95,7 +95,6 @@ impl ClientEntity {
     pub(crate) fn is_user(&self) -> bool {
         match self.role {
             Role::Admin | Role::User => true,
-            _ => false,
         }
     }
 }
@@ -110,7 +109,7 @@ impl FromSqliteRow for ClientEntity {
                 "name" => entity.name = row.get(column.name()),
                 "api_secret" => entity.api_secret = row.get(column.name()),
                 "role" => entity.role = row.get::<String, &str>(column.name()).into(),
-                _ => (),
+                _ => panic!("new field added to the clients table"),
             }
         }
 

@@ -9,12 +9,17 @@ use sqlx::{
     sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePoolOptions},
     SqlitePool,
 };
-use symphonia::core::io::vlc::CodebookEntry;
 
 use crate::{
     config::Config,
-    entity::client::{ClientEntity, ClientRepo},
-    helper::{base64_decode, base64_decode_to_string, base64_encode},
+    entity::{
+        client::{ClientEntity, ClientRepo},
+        playlist::PlaylistRepo,
+        playlist_tracks::PlaylistTracksRepo,
+        track::TrackRepo,
+    },
+    helper::{base64_decode_to_string, base64_encode},
+    player::PlayerUpdate,
 };
 
 pub(crate) type DbConnection = SqlitePool;
@@ -52,7 +57,20 @@ impl DbManager {
         ClientRepo::new(self.pool.clone())
     }
 
+    pub(crate) fn track_repo(&self) -> TrackRepo {
+        TrackRepo::new(self.pool.clone())
+    }
+
+    pub(crate) fn playlist_tracks_repo(&self) -> PlaylistTracksRepo {
+        PlaylistTracksRepo::new(self.pool.clone())
+    }
+
+    pub(crate) fn playlist_repo(&self) -> PlaylistRepo {
+        PlaylistRepo::new(self.pool.clone())
+    }
+
     pub(crate) async fn setup_db(&self) {
+        // clients table
         if let Some(client) = self.client_repo().setup_table().await {
             println!("Admin API Token: {}", &client.api_token());
 
@@ -64,6 +82,17 @@ impl DbManager {
                 println!("User API Token: {}", &user.api_token());
             }
         }
+
+        // tracks table
+        self.track_repo().setup_table().await;
+
+        // playlists table
+        if let Some(playlist) = self.playlist_repo().setup_table().await {
+            println!("Default Playlist ID: {}", &playlist.id);
+        }
+
+        // playlist tracks table
+        self.playlist_tracks_repo().setup_table().await;
     }
 }
 
