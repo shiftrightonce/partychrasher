@@ -74,27 +74,6 @@ pub(crate) async fn start_webapp(
             .service(
                 web::scope("/api/v1")
                     .wrap(auth_middleware::Auth)
-                    .wrap_fn(|req, serv| {
-                        if let Some(api_token) = req.headers().get("authorization") {
-                            if let Some(db_manager) = req.app_data::<Arc<DbManager>>() {
-                                let token = api_token
-                                    .to_str()
-                                    .unwrap()
-                                    .split(' ')
-                                    .last()
-                                    .unwrap()
-                                    .to_string();
-
-                                if let Some(client) =
-                                    block_on(db_manager.client_repo().find_by_api_token(&token))
-                                {
-                                    req.extensions_mut().insert(client);
-                                }
-                            }
-                        }
-
-                        serv.call(req).map(|res| res)
-                    })
                     .route("/user-command", web::post().to(handle_user_command))
                     .route("/admin-command", web::post().to(handle_admin_command))
                     .route("/query/next", web::get().to(handle_next_query))
