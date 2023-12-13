@@ -44,7 +44,7 @@ CREATE TABLE "playlist_tracks" (
             .execute(self.pool())
             .await
         {
-            println!("error: {:?}", e.to_string())
+            println!("playlist track error: {:?}", e.to_string())
         } else {
             return self
                 .find(entity.playlist_id.as_str(), entity.track_id.as_str())

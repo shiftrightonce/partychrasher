@@ -3,11 +3,7 @@ use sqlx::sqlite::SqliteRow;
 use sqlx::Row;
 use ulid::Ulid;
 
-use crate::{
-    db::DbConnection,
-    entity::{self, FromSqliteRow},
-    queue_manager::setup_queue_manager,
-};
+use crate::{db::DbConnection, entity::FromSqliteRow};
 
 use super::{AlbumTrackEntity, InAlbumTrackEntityDto};
 
@@ -44,7 +40,7 @@ CREATE TABLE "album_tracks" (
             .execute(self.pool())
             .await
         {
-            println!("error: {:?}", e.to_string())
+            println!("album track error: {:?}", e.to_string())
         } else {
             return self.find(&entity.album_id, &entity.track_id).await;
         }

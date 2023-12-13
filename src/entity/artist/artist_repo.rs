@@ -3,7 +3,10 @@ use sqlx::sqlite::SqliteRow;
 use sqlx::Row;
 use ulid::Ulid;
 
-use crate::{db::DbConnection, entity::FromSqliteRow, queue_manager::setup_queue_manager};
+use crate::{
+    db::{DbConnection, Paginator, PaginatorDirection},
+    entity::FromSqliteRow,
+};
 
 use super::{ArtistEntity, InArtistEntityDto};
 
@@ -51,7 +54,7 @@ impl ArtistRepo {
         None
     }
 
-    pub(crate) async fn upate(&self, id: &str, artist: InArtistEntityDto) -> Option<ArtistEntity> {
+    pub(crate) async fn update(&self, id: &str, artist: InArtistEntityDto) -> Option<ArtistEntity> {
         let sql = "UPDATE artists SET name = ?, metadata = ? WHERE id = ?";
 
         if let Some(existing) = self.find_by_id(id).await {
@@ -69,6 +72,36 @@ impl ArtistRepo {
         None
     }
 
+    pub(crate) async fn paginate(&self, paginator: &mut Paginator) -> Vec<ArtistEntity> {
+        let params = vec![paginator.last_value.clone(), paginator.limit.to_string()];
+        let mut rows = Vec::new();
+        let sql = match &paginator.direction {
+            PaginatorDirection::Next => {
+                "select * from artists where id > ?  order by id asc limit ?"
+            }
+            PaginatorDirection::Previous => {
+                "select * from artists where id < ?  order by id asc limit ?"
+            }
+        };
+
+        let mut query = sqlx::query(sql);
+
+        for a_param in params {
+            query = query.bind(a_param);
+        }
+
+        let mut result_stream = query
+            .map(|row: SqliteRow| ArtistEntity::from_row(row))
+            .fetch(self.pool());
+
+        while let Ok(Some(Some(result))) = result_stream.try_next().await {
+            paginator.last_value = result.id.clone();
+            rows.push(result)
+        }
+
+        rows
+    }
+
     pub(crate) async fn find_by_id(&self, id: &str) -> Option<ArtistEntity> {
         let sql = "SELECT * FROM artists WHERE id = ?";
 
@@ -82,6 +115,22 @@ impl ArtistRepo {
         }
 
         None
+    }
+
+    pub(crate) async fn find_by_track_id(&self, track_id: &str) -> Vec<ArtistEntity> {
+        let sql = "SELECT artists.internal_id, artists.id, artists.name, artists.metadata FROM artist_tracks LEFT JOIN artists on artists.id = artist_tracks.artist_id WHERE artist_tracks.track_id = ?";
+        let mut results = Vec::new();
+
+        let mut result_stream = sqlx::query(sql)
+            .bind(track_id)
+            .map(ArtistEntity::from_row)
+            .fetch(self.pool());
+
+        while let Ok(Some(Some(row))) = result_stream.try_next().await {
+            results.push(row)
+        }
+
+        results
     }
 
     pub(crate) async fn select_random(&self, limit: i64) -> Vec<ArtistEntity> {

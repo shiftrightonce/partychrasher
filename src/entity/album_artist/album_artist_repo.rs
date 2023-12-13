@@ -40,7 +40,7 @@ CREATE TABLE "album_artists" (
             .execute(self.pool())
             .await
         {
-            println!("error: {:?}", e.to_string())
+            println!("album artist error: {:?}", e.to_string())
         } else {
             return self.find(&entity.album_id, &entity.artist_id).await;
         }
