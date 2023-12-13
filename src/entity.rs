@@ -4,6 +4,7 @@ pub(crate) mod album;
 pub(crate) mod album_artist;
 pub(crate) mod album_track;
 pub(crate) mod artist;
+pub(crate) mod artist_track;
 pub(crate) mod client;
 pub(crate) mod playlist;
 pub(crate) mod playlist_tracks;
