@@ -144,7 +144,7 @@ impl TrackRepo {
     }
 
     pub(crate) async fn find_by_playlist_id(&self, playlist_id: &str) -> Vec<TrackEntity> {
-        let sql = "SELECT tracks.internal_id, tracks.path, tracks.id, tracks.title, tracks.metadata FROM playlist_tracks LEFT JOIN tracks on tracks.id = album_tracks.track_id WHERE playlist_tracks.album_id = ?";
+        let sql = "SELECT tracks.internal_id, tracks.path, tracks.id, tracks.title, tracks.metadata FROM playlist_tracks LEFT JOIN tracks on tracks.id = album_tracks.track_id WHERE playlist_tracks.playlist_id = ?";
         let mut results = Vec::new();
 
         let mut result_stream = sqlx::query(sql)
