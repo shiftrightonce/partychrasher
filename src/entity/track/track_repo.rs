@@ -158,6 +158,21 @@ impl TrackRepo {
 
         results
     }
+    pub(crate) async fn find_by_artist_id(&self, artist_id: &str) -> Vec<TrackEntity> {
+        let sql = "SELECT tracks.internal_id, tracks.path, tracks.id, tracks.title, tracks.metadata FROM artist_tracks LEFT JOIN tracks on tracks.id = artist_tracks.track_id WHERE artist_tracks.artist_id = ?";
+        let mut results = Vec::new();
+
+        let mut result_stream = sqlx::query(sql)
+            .bind(artist_id)
+            .map(TrackEntity::from_row)
+            .fetch(self.pool());
+
+        while let Ok(Some(Some(row))) = result_stream.try_next().await {
+            results.push(row)
+        }
+
+        results
+    }
 
     pub(crate) async fn select_random(&self, limit: i64) -> Vec<TrackEntity> {
         let sql = "SELECT * FROM tracks ORDER BY RANDOM() LIMIT ?";
