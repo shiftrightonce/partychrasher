@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use actix_web::{delete, get, put, web, HttpRequest, HttpResponse, Responder, Scope};
+use actix_web::{delete, get, put, web, HttpRequest, Responder, Scope};
 
 use crate::{
     db::{DbManager, PaginatedResult, Paginator},
@@ -17,6 +17,7 @@ pub(crate) fn register_routes(scope: Scope) -> Scope {
         .service(get_a_track)
         .service(get_tracks_by_album)
         .service(get_tracks_by_playlist)
+        .service(get_tracks_by_artist)
 }
 
 #[get("/tracks")]
@@ -37,8 +38,7 @@ async fn get_tracks(req: HttpRequest) -> impl Responder {
         .map(OutTrackEntityDto::from)
         .collect::<Vec<OutTrackEntityDto>>();
 
-    let page = PaginatedResult::<Vec<OutTrackEntityDto>>::new(results, &paginator);
-    HttpResponse::Ok().json(page)
+    PaginatedResult::<Vec<OutTrackEntityDto>>::new(results, &paginator).into_response()
 }
 
 #[get("tracks/{id}")]
@@ -79,8 +79,8 @@ async fn get_tracks_by_album(album_id: web::Path<String>, req: HttpRequest) -> i
 
 #[get("tracks/playlist/{playlist_id}")]
 async fn get_tracks_by_playlist(
-    playlist_id: web::Path<String>,
     req: HttpRequest,
+    playlist_id: web::Path<String>,
 ) -> impl Responder {
     let (_, response) = when_user::<OutTrackEntityDto>(&req).await;
 
@@ -91,7 +91,26 @@ async fn get_tracks_by_playlist(
     ApiResponse::success_response(
         db_manager
             .track_repo()
-            .find_by_playlist_id(&&playlist_id.into_inner())
+            .find_by_playlist_id(&playlist_id.into_inner())
+            .await
+            .into_iter()
+            .map(OutTrackEntityDto::from)
+            .collect::<Vec<OutTrackEntityDto>>(),
+    )
+}
+
+#[get("tracks/artist/{artist_id}")]
+async fn get_tracks_by_artist(req: HttpRequest, artist_id: web::Path<String>) -> impl Responder {
+    let (_, response) = when_user::<OutTrackEntityDto>(&req).await;
+
+    if response.is_some() {
+        return response.unwrap();
+    }
+    let db_manager = req.app_data::<Arc<DbManager>>().unwrap();
+    ApiResponse::success_response(
+        db_manager
+            .track_repo()
+            .find_by_artist_id(&artist_id.into_inner())
             .await
             .into_iter()
             .map(OutTrackEntityDto::from)
