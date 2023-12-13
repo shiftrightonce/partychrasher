@@ -3,7 +3,11 @@ use sqlx::sqlite::SqliteRow;
 use sqlx::Row;
 use ulid::Ulid;
 
-use crate::{db::DbConnection, entity::FromSqliteRow, queue_manager::setup_queue_manager};
+use crate::{
+    db::{DbConnection, Paginator, PaginatorDirection},
+    entity::FromSqliteRow,
+    queue_manager::setup_queue_manager,
+};
 
 use super::{AlbumEntity, InAlbumEntityDto};
 
@@ -68,6 +72,51 @@ impl AlbumRepo {
         None
     }
 
+    pub(crate) async fn delete(&self, id: &str) -> Option<AlbumEntity> {
+        if let Some(entity) = self.find_by_id(id).await {
+            if sqlx::query("DELETE FROM albums WHERE id = ?")
+                .bind(id)
+                .execute(self.pool())
+                .await
+                .is_ok()
+            {
+                return Some(entity);
+            }
+        }
+
+        None
+    }
+
+    pub(crate) async fn paginate(&self, paginator: &mut Paginator) -> Vec<AlbumEntity> {
+        let params = vec![paginator.last_value.clone(), paginator.limit.to_string()];
+        let mut rows = Vec::new();
+        let sql = match &paginator.direction {
+            PaginatorDirection::Next => {
+                "select * from albums where id > ?  order by id asc limit ?"
+            }
+            PaginatorDirection::Previous => {
+                "select * from albums where id < ?  order by id asc limit ?"
+            }
+        };
+
+        let mut query = sqlx::query(sql);
+
+        for a_param in params {
+            query = query.bind(a_param);
+        }
+
+        let mut result_stream = query
+            .map(|row: SqliteRow| AlbumEntity::from_row(row))
+            .fetch(self.pool());
+
+        while let Ok(Some(Some(result))) = result_stream.try_next().await {
+            paginator.last_value = result.id.clone();
+            rows.push(result)
+        }
+
+        rows
+    }
+
     pub(crate) async fn find_by_id(&self, id: &str) -> Option<AlbumEntity> {
         let sql = "SELECT * from albums WHERE id = ?";
 
@@ -81,6 +130,38 @@ impl AlbumRepo {
         } else {
             None
         }
+    }
+
+    pub(crate) async fn find_by_track_id(&self, track_id: &str) -> Vec<AlbumEntity> {
+        let sql = "SELECT albums.internal_id, albums.id, albums.title, albums.metadata FROM album_tracks LEFT JOIN albums on albums.id = album_tracks.album_id WHERE album_tracks.track_id = ?";
+        let mut results = Vec::new();
+
+        let mut result_stream = sqlx::query(sql)
+            .bind(track_id)
+            .map(AlbumEntity::from_row)
+            .fetch(self.pool());
+
+        while let Ok(Some(Some(row))) = result_stream.try_next().await {
+            results.push(row)
+        }
+
+        results
+    }
+
+    pub(crate) async fn find_by_artist_id(&self, artist_id: &str) -> Vec<AlbumEntity> {
+        let sql = "SELECT albums.internal_id, albums.id, albums.title, albums.metadata FROM album_artists LEFT JOIN albums on albums.id = album_artists.album_id WHERE album_artists.artist_id = ?";
+        let mut results = Vec::new();
+
+        let mut result_stream = sqlx::query(sql)
+            .bind(artist_id)
+            .map(AlbumEntity::from_row)
+            .fetch(self.pool());
+
+        while let Ok(Some(Some(row))) = result_stream.try_next().await {
+            results.push(row)
+        }
+
+        results
     }
 
     pub(crate) async fn search(&self, keyword: &str) -> Vec<AlbumEntity> {
