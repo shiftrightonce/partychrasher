@@ -1,6 +1,6 @@
 use std::{collections::HashMap, fmt::Display, str::FromStr, sync::Arc, time::Duration};
 
-use actix_web::{web::Query, HttpRequest};
+use actix_web::{body::BoxBody, web::Query, HttpRequest, HttpResponse, Responder};
 use sqlx::{
     sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePoolOptions},
     SqlitePool,
@@ -13,6 +13,7 @@ use crate::{
         album_artist::AlbumArtistRepo,
         album_track::AlbumTrackRepo,
         artist::ArtistRepo,
+        artist_track::ArtistTrackRepo,
         client::{ClientEntity, ClientRepo},
         playlist::PlaylistRepo,
         playlist_tracks::PlaylistTracksRepo,
@@ -84,6 +85,10 @@ impl DbManager {
         AlbumTrackRepo::new(self.pool.clone())
     }
 
+    pub(crate) fn artist_track_repo(&self) -> ArtistTrackRepo {
+        ArtistTrackRepo::new(self.pool.clone())
+    }
+
     pub(crate) async fn setup_db(&self) {
         // clients table
         if let Some(client) = self.client_repo().setup_table().await {
@@ -119,6 +124,9 @@ impl DbManager {
 
         // playlist tracks table
         self.playlist_track_repo().setup_table().await;
+
+        // artist tracks table
+        self.artist_track_repo().setup_table().await;
     }
 }
 
@@ -309,5 +317,9 @@ impl<T: serde::Serialize> PaginatedResult<T> {
             page,
             paginators: paginator.to_collection(),
         }
+    }
+
+    pub(crate) fn into_response(self) -> HttpResponse {
+        HttpResponse::Ok().json(self)
     }
 }
