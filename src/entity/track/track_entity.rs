@@ -100,7 +100,6 @@ impl FromSqliteRow for TrackEntity {
         let mut entity = Self::default();
 
         for column in row.columns() {
-            dbg!(column.name());
             match column.name() {
                 "internal_id" => entity.internal_id = row.get(column.name()),
                 "id" => entity.id = row.get(column.name()),
