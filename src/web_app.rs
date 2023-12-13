@@ -1,10 +1,5 @@
 use actix::*;
-use futures::executor::block_on;
-use futures_util::{future::FutureExt, Future};
-use std::{
-    pin::Pin,
-    sync::{atomic::AtomicUsize, Arc},
-};
+use std::sync::{atomic::AtomicUsize, Arc};
 
 use crate::{
     config::Config,
@@ -15,27 +10,23 @@ use crate::{
     websocket::{self, server},
 };
 use actix_web::{
-    dev::Service as _,
     web::{self, Data},
-    App, HttpMessage, HttpRequest, HttpResponse, HttpResponseBuilder, HttpServer,
+    App, HttpRequest, HttpResponse, HttpServer,
 };
 
 use self::{
     admin::handle_admin_command,
     api_response::ApiResponse,
     docs::dev_docs_index_handler,
-    query::{
-        handle_get_playlist_query, handle_next_query, handle_previous_query,
-        handle_track_info_query, handle_track_search,
-    },
+    query::{handle_get_playlist_query, handle_next_query, handle_previous_query},
     user::handle_user_command,
 };
 
 mod admin;
+mod api;
 mod api_response;
 mod auth_middleware;
 mod docs;
-mod file_server;
 mod manage_client;
 mod query;
 mod user;
@@ -71,6 +62,7 @@ pub(crate) async fn start_webapp(
             .app_data(db_manager.clone())
             .service(actix_files::Files::new("/assets", "./static"))
             // RESTFUL API version 1
+            .configure(api::v1::config_api_service)
             .service(
                 web::scope("/api/v1")
                     .wrap(auth_middleware::Auth)
@@ -78,37 +70,7 @@ pub(crate) async fn start_webapp(
                     .route("/admin-command", web::post().to(handle_admin_command))
                     .route("/query/next", web::get().to(handle_next_query))
                     .route("/query/previous", web::get().to(handle_previous_query))
-                    .route("/query/playlist", web::get().to(handle_get_playlist_query))
-                    .route(
-                        "/query/info/{track}",
-                        web::get().to(handle_track_info_query),
-                    )
-                    .route(
-                        "/query/search/{keyword}",
-                        web::get().to(handle_track_search),
-                    )
-                    .route("/stream/{id}", web::get().to(file_server::serve))
-                    .route("/manage/clients", web::get().to(manage_client::get_clients))
-                    .route(
-                        "/manage/client/{id}",
-                        web::get().to(manage_client::get_a_client),
-                    )
-                    .route(
-                        "/manage/client",
-                        web::post().to(manage_client::create_client),
-                    )
-                    .route(
-                        "/manage/client/{id}",
-                        web::put().to(manage_client::update_client),
-                    )
-                    .route(
-                        "/manage/client/{id}",
-                        web::delete().to(manage_client::delete_client),
-                    )
-                    .route(
-                        "/manage/client/reset/{id}",
-                        web::get().to(manage_client::reset_token),
-                    ),
+                    .route("/query/playlist", web::get().to(handle_get_playlist_query)),
             )
             .route("/play", web::post().to(play_track))
             .route("/cmd", web::post().to(command))
@@ -140,7 +102,7 @@ pub(crate) async fn when_user<R: serde::Serialize>(
     req: &HttpRequest,
 ) -> (bool, Option<HttpResponse>) {
     if let Ok(client) = ClientEntity::try_from(req) {
-        if !client.is_user() {
+        if client.is_user() {
             return (true, None);
         }
     }

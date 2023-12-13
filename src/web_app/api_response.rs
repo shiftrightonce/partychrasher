@@ -1,5 +1,7 @@
 #![allow(dead_code)]
 
+use actix_web::HttpResponse;
+
 #[derive(Debug, serde::Serialize)]
 pub(crate) struct ApiResponse<D: serde::Serialize> {
     data: Option<D>,
@@ -36,5 +38,21 @@ impl<D: serde::Serialize> ApiResponse<D> {
 
     pub(crate) fn to_json(self) -> serde_json::Value {
         serde_json::to_value(self).unwrap()
+    }
+
+    pub(crate) fn success_response(data: D) -> HttpResponse {
+        HttpResponse::Ok().json(Self::success(data))
+    }
+
+    pub(crate) fn not_found_response(message: Option<&str>) -> HttpResponse {
+        HttpResponse::NotFound().json(Self::error(message.unwrap_or("resource not found")))
+    }
+
+    pub(crate) fn into_response(data: Option<D>) -> HttpResponse {
+        if data.is_some() {
+            Self::success_response(data.unwrap())
+        } else {
+            Self::not_found_response(None)
+        }
     }
 }

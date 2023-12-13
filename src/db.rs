@@ -1,10 +1,6 @@
 use std::{collections::HashMap, fmt::Display, str::FromStr, sync::Arc, time::Duration};
 
 use actix_web::{web::Query, HttpRequest};
-use base64::{
-    alphabet::{self, Alphabet},
-    engine,
-};
 use sqlx::{
     sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePoolOptions},
     SqlitePool,
@@ -13,13 +9,16 @@ use sqlx::{
 use crate::{
     config::Config,
     entity::{
+        album::AlbumRepo,
+        album_artist::AlbumArtistRepo,
+        album_track::AlbumTrackRepo,
+        artist::ArtistRepo,
         client::{ClientEntity, ClientRepo},
         playlist::PlaylistRepo,
         playlist_tracks::PlaylistTracksRepo,
         track::TrackRepo,
     },
     helper::{base64_decode_to_string, base64_encode},
-    player::PlayerUpdate,
 };
 
 pub(crate) type DbConnection = SqlitePool;
@@ -61,12 +60,28 @@ impl DbManager {
         TrackRepo::new(self.pool.clone())
     }
 
-    pub(crate) fn playlist_tracks_repo(&self) -> PlaylistTracksRepo {
+    pub(crate) fn playlist_track_repo(&self) -> PlaylistTracksRepo {
         PlaylistTracksRepo::new(self.pool.clone())
+    }
+
+    pub(crate) fn artist_repo(&self) -> ArtistRepo {
+        ArtistRepo::new(self.pool.clone())
     }
 
     pub(crate) fn playlist_repo(&self) -> PlaylistRepo {
         PlaylistRepo::new(self.pool.clone())
+    }
+
+    pub(crate) fn album_repo(&self) -> AlbumRepo {
+        AlbumRepo::new(self.pool.clone())
+    }
+
+    pub(crate) fn album_artist_repo(&self) -> AlbumArtistRepo {
+        AlbumArtistRepo::new(self.pool.clone())
+    }
+
+    pub(crate) fn album_track_repo(&self) -> AlbumTrackRepo {
+        AlbumTrackRepo::new(self.pool.clone())
     }
 
     pub(crate) async fn setup_db(&self) {
@@ -83,8 +98,19 @@ impl DbManager {
             }
         }
 
+        // artists table
+        self.artist_repo().setup_table().await;
+
+        // albums table
+        self.album_repo().setup_table().await;
         // tracks table
         self.track_repo().setup_table().await;
+
+        // album artists
+        self.album_artist_repo().setup_table().await;
+
+        // album tracks
+        self.album_track_repo().setup_table().await;
 
         // playlists table
         if let Some(playlist) = self.playlist_repo().setup_table().await {
@@ -92,7 +118,7 @@ impl DbManager {
         }
 
         // playlist tracks table
-        self.playlist_tracks_repo().setup_table().await;
+        self.playlist_track_repo().setup_table().await;
     }
 }
 

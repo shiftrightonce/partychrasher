@@ -5,6 +5,8 @@ use ulid::Ulid;
 
 use crate::{db::DbConnection, entity::FromSqliteRow, queue_manager::setup_queue_manager};
 
+use super::{InPlaylistTrackEntityDto, PlaylistTrackEntity};
+
 pub(crate) struct PlaylistTracksRepo {
     pool: DbConnection,
 }
@@ -20,7 +22,7 @@ impl PlaylistTracksRepo {
 
     pub(crate) async fn setup_table(&self) {
         let sql = r#"
-CREATE TABLE "playlist_tracts" (
+CREATE TABLE "playlist_tracks" (
     "track_id"	TEXT NOT NULL,
     "playlist_id"	TEXT NOT NULL,
     "metadata" TEXT,
@@ -29,5 +31,46 @@ CREATE TABLE "playlist_tracts" (
        "#;
 
         _ = sqlx::query(sql).execute(self.pool()).await;
+    }
+
+    pub(crate) async fn create(
+        &self,
+        entity: InPlaylistTrackEntityDto,
+    ) -> Option<PlaylistTrackEntity> {
+        let sql = "INSERT INTO playlist_tracks (playlist_id, track_id) values (?, ?)";
+        if let Err(e) = sqlx::query(sql)
+            .bind(&entity.playlist_id)
+            .bind(&entity.track_id)
+            .execute(self.pool())
+            .await
+        {
+            println!("error: {:?}", e.to_string())
+        } else {
+            return self
+                .find(entity.playlist_id.as_str(), entity.track_id.as_str())
+                .await;
+        }
+
+        None
+    }
+
+    pub(crate) async fn find(
+        &self,
+        playlist_id: &str,
+        track_id: &str,
+    ) -> Option<PlaylistTrackEntity> {
+        let sql = "SELECT * FROM playlist_tracks WHERE playlist_id = ? AND artist_id = ?";
+
+        if let Ok(row) = sqlx::query(sql)
+            .bind(playlist_id)
+            .bind(track_id)
+            .map(PlaylistTrackEntity::from_row)
+            .fetch_one(self.pool())
+            .await
+        {
+            return row;
+        }
+
+        None
     }
 }
