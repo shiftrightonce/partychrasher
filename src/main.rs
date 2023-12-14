@@ -1,7 +1,6 @@
 use clap::{Parser, Subcommand};
 use config::ConfigBuilder;
 use db::setup_db_connection;
-use futures_util::stream::Scan;
 use thread_channels::setup_threads;
 
 mod cli;
