@@ -8,13 +8,14 @@ use actix_web::{
 
 use crate::{
     db::{DbManager, PaginatedResult, Paginator},
-    entity::client::{InClientEntityDto, OutApiTokenDto, OutClientEntityDto},
-    web_app::{api_response::ApiResponse, when_admin},
+    entity::client::{ClientEntity, InClientEntityDto, OutApiTokenDto, OutClientEntityDto},
+    web_app::{api_response::ApiResponse, when_admin, when_user},
 };
 
 pub(crate) fn register_routes(scope: Scope) -> Scope {
     scope
         .service(get_clients)
+        .service(get_me)
         .service(get_a_client)
         .service(create_client)
         .service(update_client)
@@ -41,6 +42,21 @@ async fn get_clients(req: HttpRequest) -> impl Responder {
 
     let page = PaginatedResult::<Vec<OutClientEntityDto>>::new(results, &paginator);
     HttpResponse::Ok().json(page)
+}
+
+#[get("clients/me")]
+async fn get_me(req: HttpRequest) -> impl Responder {
+    let (_, response) = when_user::<OutClientEntityDto>(&req).await;
+
+    if response.is_some() {
+        return response.unwrap();
+    }
+
+    ApiResponse::into_response(
+        ClientEntity::try_from(&req)
+            .ok()
+            .map(OutClientEntityDto::from),
+    )
 }
 
 #[get("/clients/{id}")]

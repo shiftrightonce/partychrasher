@@ -15,18 +15,6 @@ pub(crate) struct TrackEntity {
     pub(crate) metadata: String,
 }
 
-impl TrackEntity {
-    pub(crate) fn new(id: &str, title: &str, path: &str, metadata: &str) -> Self {
-        Self {
-            internal_id: 0,
-            id: id.to_string(),
-            title: title.to_string(),
-            path: path.to_string(),
-            metadata: metadata.to_string(),
-        }
-    }
-}
-
 #[derive(Debug, serde::Deserialize)]
 pub(crate) struct InTrackEntityDto {
     pub(crate) title: String,

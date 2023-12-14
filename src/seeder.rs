@@ -122,7 +122,7 @@ async fn seed_playlists(db_manager: &DbManager, total: u64) {
 
     // default
     if let Some(default) = playlist_repo.get_default_playlist().await {
-        for track in track_repo.select_random(rng.gen_range(2..259)).await {
+        for track in track_repo.select_random(rng.gen_range(2..100)).await {
             let in_entity = InPlaylistTrackEntityDto {
                 playlist_id: default.id.clone(),
                 track_id: track.id,
@@ -142,7 +142,7 @@ async fn seed_playlists(db_manager: &DbManager, total: u64) {
         };
 
         if let Some(playlist) = playlist_repo.create(entity).await {
-            for track in track_repo.select_random(rng.gen_range(2..259)).await {
+            for track in track_repo.select_random(rng.gen_range(2..10)).await {
                 let in_entity = InPlaylistTrackEntityDto {
                     playlist_id: playlist.id.clone(),
                     track_id: track.id,

@@ -61,6 +61,7 @@ pub(crate) async fn start_webapp(
             .app_data(the_app_config.clone())
             .app_data(db_manager.clone())
             .service(actix_files::Files::new("/assets", "./static"))
+            .route("/dev-docs", web::get().to(dev_docs_index_handler))
             // RESTFUL API version 1
             .configure(api::v1::config_api_service)
             .service(
@@ -75,7 +76,6 @@ pub(crate) async fn start_webapp(
             .route("/play", web::post().to(play_track))
             .route("/cmd", web::post().to(command))
             .route("/ws", web::get().to(websocket::handle_websocket))
-            .route("/dev-docs", web::get().to(dev_docs_index_handler))
     })
     .bind(("0.0.0.0", 8080))
     .expect("could not bind to port: 8080")

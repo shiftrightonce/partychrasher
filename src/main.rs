@@ -1,6 +1,7 @@
 use clap::{Parser, Subcommand};
 use config::ConfigBuilder;
 use db::setup_db_connection;
+use futures_util::stream::Scan;
 use thread_channels::setup_threads;
 
 mod cli;
@@ -11,6 +12,7 @@ mod helper;
 mod output;
 mod player;
 mod queue_manager;
+mod scanner;
 mod seeder;
 mod thread_channels;
 mod web_app;
@@ -25,6 +27,8 @@ async fn main() {
     let mut config_builder = ConfigBuilder::new();
     let cli = Cli::parse();
     let mut seeding = false;
+    let mut scanning = false;
+    let mut path_to_scan = String::new();
     let mut seed_total = 0;
 
     match cli.command {
@@ -50,6 +54,13 @@ async fn main() {
                 config_builder = config_builder.enable_web(true);
                 config_builder = config_builder.enable_ws(true);
             }
+            Commands::Scan { path } => {
+                scanning = true;
+                path_to_scan = path;
+                config_builder = config_builder.enable_cli(false);
+                config_builder = config_builder.enable_web(false);
+                config_builder = config_builder.enable_ws(false);
+            }
         },
         None => {
             config_builder = config_builder.enable_cli(false);
@@ -65,8 +76,8 @@ async fn main() {
     // Setup database
     db_manager.setup_db().await;
 
-    // // Setup all the OS threads and mpsc channels
     if app_config.is_cli_enabled() || app_config.is_web_enabled() {
+        // Setup all the OS threads and mpsc channels
         let (ws_rx, cmd_tx, queue_manager_tx) = setup_threads(&app_config);
 
         if app_config.is_web_enabled() {
@@ -82,6 +93,8 @@ async fn main() {
         }
     } else if seeding {
         seeder::run_seeders(&db_manager, seed_total).await;
+    } else if scanning {
+        scanner::scan(path_to_scan).await;
     }
 }
 
@@ -101,4 +114,8 @@ enum Commands {
     Cli,
     Both,
     Web,
+    Scan {
+        #[arg(short, long)]
+        path: String,
+    },
 }

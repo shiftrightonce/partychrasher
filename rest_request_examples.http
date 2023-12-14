@@ -1,0 +1,30 @@
+@host = http://127.0.0.1:8080/api/v1
+@token = 01hhhrc6xah4kqtnj1909y20bz.e35f738314c5192effacdb6fd8f5d4ba424e86f271b19a50101e015e7130868d
+
+## Get paginated list of tracks 
+GET {{host}}/tracks
+Authorization: Bearer {{token}}
+
+### Get a track by ID
+@track_id = 01hhhrdxe345c7hgnwk5mxpers
+GET {{host}}/tracks/{{track_id}}
+Authorization: Bearer {{token}}
+
+### Update a track
+PUT {{host}}/tracks/{{track_id}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "title": "track title changed"
+}
+
+
+### Get paginated list of albums
+GET {{host}}/albums
+Authorization: Bearer {{token}}
+
+###  Get an album by ID
+@album_id = 01hhhre5nxe4j82sxfd6pzpcnv
+GET {{host}}/albums/{{album_id}}
+Authorization: Bearer {{token}}

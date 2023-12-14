@@ -1,9 +1,4 @@
-use futures::stream::TryStreamExt;
-use sqlx::sqlite::SqliteRow;
-use sqlx::Row;
-use ulid::Ulid;
-
-use crate::{db::DbConnection, entity::FromSqliteRow, queue_manager::setup_queue_manager};
+use crate::{db::DbConnection, entity::FromSqliteRow};
 
 use super::{InPlaylistTrackEntityDto, PlaylistTrackEntity};
 

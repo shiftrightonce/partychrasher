@@ -1,12 +1,10 @@
 use futures::stream::TryStreamExt;
 use sqlx::sqlite::SqliteRow;
-use sqlx::Row;
 use ulid::Ulid;
 
 use crate::{
     db::{DbConnection, Paginator, PaginatorDirection},
     entity::FromSqliteRow,
-    queue_manager::setup_queue_manager,
 };
 
 use super::{AlbumEntity, InAlbumEntityDto};
@@ -27,7 +25,7 @@ impl AlbumRepo {
     pub(crate) async fn setup_table(&self) {
         let sql = r#"CREATE TABLE "albums" (
 	"internal_id"	INTEGER,
-	"id"	TEXT,
+	"id"	TEXT NOT NULL UNIQUE,
 	"title"	TEXT,
 	"metadata"	TEXT,
 	PRIMARY KEY("internal_id" AUTOINCREMENT)

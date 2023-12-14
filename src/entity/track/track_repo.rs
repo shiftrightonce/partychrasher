@@ -23,9 +23,9 @@ impl TrackRepo {
     pub(crate) async fn setup_table(&self) {
         let sql = r#"CREATE TABLE "tracks" (
     "internal_id"	INTEGER,
-	"id"	TEXT,
-	"title"	TEXT,
-	"path"	TEXT,
+	"id"	TEXT NOT NULL UNIQUE,
+	"title"	TEXT NOT NULL,
+	"path"	TEXT NOT NULL,
 	"metadata"	TEXT,
 	PRIMARY KEY("internal_id" AUTOINCREMENT)
 );"#;

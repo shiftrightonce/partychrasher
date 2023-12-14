@@ -1,9 +1,12 @@
-use futures::stream::TryStreamExt;
+use futures_util::TryStreamExt;
 use sqlx::sqlite::SqliteRow;
 use sqlx::Row;
 use ulid::Ulid;
 
-use crate::{db::DbConnection, entity::FromSqliteRow, queue_manager::setup_queue_manager};
+use crate::{
+    db::{DbConnection, Paginator, PaginatorDirection},
+    entity::FromSqliteRow,
+};
 
 use super::{InPlaylistEntityDto, PlaylistEntity};
 
@@ -109,6 +112,52 @@ impl PlaylistRepo {
         }
 
         None
+    }
+
+    pub(crate) async fn delete(&self, id: &str) -> Option<PlaylistEntity> {
+        if let Some(existing) = self.find_by_id(id).await {
+            if let Err(e) = sqlx::query("DELETE FROM playlists WHERE id = ? and is_default = 0")
+                .bind(id)
+                .execute(self.pool())
+                .await
+            {
+                println!("error deleting playlist: {:?}", e);
+            } else {
+                return Some(existing);
+            }
+        }
+
+        None
+    }
+
+    pub(crate) async fn paginate(&self, paginator: &mut Paginator) -> Vec<PlaylistEntity> {
+        let params = vec![paginator.last_value.clone(), paginator.limit.to_string()];
+        let mut rows = Vec::new();
+        let sql = match &paginator.direction {
+            PaginatorDirection::Next => {
+                "select * from playlists where id > ?  order by id asc limit ?"
+            }
+            PaginatorDirection::Previous => {
+                "select * from playlists where id < ?  order by id asc limit ?"
+            }
+        };
+
+        let mut query = sqlx::query(sql);
+
+        for a_param in params {
+            query = query.bind(a_param);
+        }
+
+        let mut result_stream = query
+            .map(|row: SqliteRow| PlaylistEntity::from_row(row))
+            .fetch(self.pool());
+
+        while let Ok(Some(Some(result))) = result_stream.try_next().await {
+            paginator.last_value = result.id.clone();
+            rows.push(result)
+        }
+
+        rows
     }
 
     pub(crate) async fn find_by_id(&self, id: &str) -> Option<PlaylistEntity> {

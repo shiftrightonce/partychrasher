@@ -23,7 +23,7 @@ impl ClientRepo {
     pub(crate) async fn setup_table(&self) -> Option<ClientEntity> {
         let sql = r#" CREATE TABLE IF NOT EXISTS "clients" (
 	"internal_id"	INTEGER,
-	"id"	TEXT NOT NULL,
+	"id"	TEXT NOT NULL UNIQUE,
 	"name"	TEXT UNIQUE,
 	"role"	TEXT,
 	"api_secret"	TEXT,

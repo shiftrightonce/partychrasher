@@ -6,6 +6,7 @@ mod v1_album;
 mod v1_artist;
 mod v1_client;
 mod v1_file_server;
+mod v1_playlist;
 mod v1_track;
 
 pub(crate) fn config_api_service(config: &mut web::ServiceConfig) {
@@ -19,6 +20,8 @@ pub(crate) fn config_api_service(config: &mut web::ServiceConfig) {
     api_routes = v1_album::register_routes(api_routes);
     // artist routes
     api_routes = v1_artist::register_routes(api_routes);
+    // playlist routes
+    api_routes = v1_playlist::register_routes(api_routes);
     // file stream routes
     api_routes = v1_file_server::register_routes(api_routes);
 

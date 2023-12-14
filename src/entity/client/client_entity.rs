@@ -10,7 +10,7 @@ use crate::{
     helper::generate_id,
 };
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub(crate) struct ClientEntity {
     internal_id: Option<i64>,
     pub(crate) id: String,
@@ -43,8 +43,8 @@ impl Display for NotAuthenticated {
 impl TryFrom<&HttpRequest> for ClientEntity {
     type Error = NotAuthenticated;
     fn try_from(value: &HttpRequest) -> Result<Self, Self::Error> {
-        if let Some(client) = value.extensions_mut().remove::<Self>() {
-            Ok(client)
+        if let Some(client) = value.extensions_mut().get::<Self>() {
+            Ok(client.clone())
         } else {
             Err(NotAuthenticated)
         }
