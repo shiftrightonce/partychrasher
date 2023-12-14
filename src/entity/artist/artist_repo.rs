@@ -1,6 +1,5 @@
 use futures::stream::TryStreamExt;
 use sqlx::sqlite::SqliteRow;
-use sqlx::Row;
 use ulid::Ulid;
 
 use crate::{
@@ -123,6 +122,22 @@ impl ArtistRepo {
 
         let mut result_stream = sqlx::query(sql)
             .bind(track_id)
+            .map(ArtistEntity::from_row)
+            .fetch(self.pool());
+
+        while let Ok(Some(Some(row))) = result_stream.try_next().await {
+            results.push(row)
+        }
+
+        results
+    }
+
+    pub(crate) async fn find_by_album_id(&self, album_id: &str) -> Vec<ArtistEntity> {
+        let sql = "SELECT artists.internal_id, artists.id, artists.name, artists.metadata FROM album_artists LEFT JOIN artists on artists.id = album_artists.artist_id WHERE album_artists.album_id = ?";
+        let mut results = Vec::new();
+
+        let mut result_stream = sqlx::query(sql)
+            .bind(album_id)
             .map(ArtistEntity::from_row)
             .fetch(self.pool());
 
