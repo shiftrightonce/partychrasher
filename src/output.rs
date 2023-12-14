@@ -227,6 +227,7 @@ mod cpal {
                 cpal::SampleFormat::U16 => {
                     CpalAudioOutputImpl::<u16>::try_open(spec, duration, &device)
                 }
+                _ => CpalAudioOutputImpl::<u16>::try_open(spec, duration, &device),
             }
         }
     }
@@ -241,7 +242,7 @@ mod cpal {
         resampler: Option<Resampler<T>>,
     }
 
-    impl<T: AudioOutputSample> CpalAudioOutputImpl<T> {
+    impl<T: AudioOutputSample + cpal::SizedSample> CpalAudioOutputImpl<T> {
         pub fn try_open(
             spec: SignalSpec,
             duration: Duration,
@@ -281,6 +282,7 @@ mod cpal {
                     data[written..].iter_mut().for_each(|s| *s = T::MID);
                 },
                 move |err| error!("audio output error: {}", err),
+                None,
             );
 
             if let Err(err) = stream_result {
