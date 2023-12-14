@@ -82,7 +82,7 @@ impl ClientEntity {
 
     pub(crate) fn api_token(&self) -> String {
         if !self.id.is_empty() && !self.api_secret.is_empty() {
-            format!("{}.{}", self.id, self.api_secret)
+            format!("{}-{}", self.id, self.api_secret)
         } else {
             String::new()
         }

@@ -178,7 +178,7 @@ impl ClientRepo {
     }
 
     pub(crate) async fn find_by_api_token(&self, token: &str) -> Option<ClientEntity> {
-        let pieces = token.split('.').collect::<Vec<&str>>();
+        let pieces = token.split('-').collect::<Vec<&str>>();
         if pieces.len() == 2 {
             if let Ok(row) =
                 sqlx::query(r#"SELECT * FROM "clients" WHERE "id" = ? AND "api_secret" = ? "#)
