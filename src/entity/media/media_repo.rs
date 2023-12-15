@@ -22,7 +22,7 @@ impl MediaRepo {
     }
 
     pub(crate) async fn setup_table(&self) {
-        let sql = r#"CREATE TABLE "media" (
+        let sql = r#"CREATE TABLE IF NOT EXISTS "media" (
     "internal_id"	INTEGER,
 	"id"	TEXT NOT NULL UNIQUE,
 	"filename"	TEXT NOT NULL,
