@@ -54,7 +54,9 @@ pub(crate) async fn start_webapp(
     let the_app_config = Data::new(config.clone());
 
     _ = HttpServer::new(move || {
+        let cors = actix_cors::Cors::permissive();
         App::new()
+            .wrap(cors)
             .app_data(Data::new(player_sender.clone()))
             .app_data(Data::new(queue_manager_sender.clone()))
             .app_data(Data::new(server.clone()))
