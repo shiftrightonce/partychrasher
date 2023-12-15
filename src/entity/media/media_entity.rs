@@ -7,36 +7,86 @@ use symphonia::core::meta::Tag;
 
 use crate::entity::FromSqliteRow;
 
+#[derive(Debug, serde::Deserialize, serde::Serialize)]
+pub(crate) enum MediaType {
+    #[serde(rename(deserialize = "video", serialize = "video"))]
+    Video,
+    #[serde(rename(deserialize = "audio", serialize = "audio"))]
+    Audio,
+    #[serde(rename(deserialize = "photo", serialize = "photo"))]
+    Photo,
+    #[serde(rename(deserialize = "unknown", serialize = "unknown"))]
+    Unknown,
+}
+
+impl Default for MediaType {
+    fn default() -> Self {
+        Self::Unknown
+    }
+}
+
+impl From<String> for MediaType {
+    fn from(value: String) -> Self {
+        match value.to_lowercase().as_str() {
+            "audio" => Self::Audio,
+            "video" => Self::Video,
+            "photo" => Self::Photo,
+            "unknown" => Self::Unknown,
+            _ => Self::default(),
+        }
+    }
+}
+
+impl ToString for MediaType {
+    fn to_string(&self) -> String {
+        match self {
+            Self::Audio => "audio".to_string(),
+            Self::Video => "video".to_owned(),
+            Self::Photo => "photo".to_string(),
+            Self::Unknown => "unknown".to_string(),
+        }
+    }
+}
+
 #[derive(Debug, Default)]
-pub(crate) struct TrackEntity {
+pub(crate) struct MediaEntity {
     pub(crate) internal_id: i64,
     pub(crate) id: String,
-    pub(crate) title: String,
+    pub(crate) media_type: MediaType,
+    pub(crate) filename: String,
     pub(crate) path: String,
-    pub(crate) metadata: TrackMetadata,
+    pub(crate) metadata: MediaMetadata,
 }
 
 #[derive(Debug, serde::Deserialize)]
-pub(crate) struct InTrackEntityDto {
-    pub(crate) title: String,
+pub(crate) struct InMediaEntityDto {
+    pub(crate) filename: String,
+    pub(crate) media_type: Option<MediaType>,
     pub(crate) path: Option<String>,
-    pub(crate) metadata: Option<TrackMetadata>,
+    pub(crate) metadata: Option<MediaMetadata>,
 }
 
-impl InTrackEntityDto {
-    pub(crate) fn new(title: &str, path: Option<String>, metadata: Option<TrackMetadata>) -> Self {
+impl InMediaEntityDto {
+    pub(crate) fn new(
+        filename: &str,
+        media_type: Option<MediaType>,
+        path: Option<String>,
+        metadata: Option<MediaMetadata>,
+    ) -> Self {
         Self {
-            title: title.to_string(),
+            filename: filename.to_string(),
+            media_type,
             path,
             metadata,
         }
     }
 }
 
-impl From<TrackEntity> for InTrackEntityDto {
-    fn from(entity: TrackEntity) -> Self {
+impl From<MediaEntity> for InMediaEntityDto {
+    fn from(entity: MediaEntity) -> Self {
         Self {
-            title: entity.title,
+            filename: entity.filename,
+            media_type: Some(entity.media_type),
             path: if entity.path.is_empty() {
                 None
             } else {
@@ -48,7 +98,7 @@ impl From<TrackEntity> for InTrackEntityDto {
 }
 
 #[derive(Debug, Default, serde::Deserialize, serde::Serialize)]
-pub(crate) struct TrackMetadata {
+pub(crate) struct MediaMetadata {
     pub(crate) title: String,
     pub(crate) artist: String,
     pub(crate) album: String,
@@ -56,7 +106,7 @@ pub(crate) struct TrackMetadata {
     pub(crate) track_number: String,
 }
 
-impl From<&[Tag]> for TrackMetadata {
+impl From<&[Tag]> for MediaMetadata {
     fn from(tags: &[Tag]) -> Self {
         let mut metadata = Self::default();
 
@@ -88,43 +138,45 @@ impl From<&[Tag]> for TrackMetadata {
     }
 }
 
-impl ToString for TrackMetadata {
+impl ToString for MediaMetadata {
     fn to_string(&self) -> String {
         serde_json::to_string(self).unwrap()
     }
 }
 
 #[derive(Debug, serde::Serialize)]
-pub(crate) struct OutTrackEntityDto {
+pub(crate) struct OutMediaEntityDto {
     id: String,
-    title: String,
+    filename: String,
+    media_type: MediaType,
     path: String,
-    metadata: TrackMetadata,
+    metadata: MediaMetadata,
 }
 
-impl From<TrackEntity> for OutTrackEntityDto {
-    fn from(entity: TrackEntity) -> Self {
+impl From<MediaEntity> for OutMediaEntityDto {
+    fn from(entity: MediaEntity) -> Self {
         Self {
             id: entity.id,
-            title: entity.title,
+            filename: entity.filename,
+            media_type: entity.media_type,
             path: entity.path,
             metadata: entity.metadata,
         }
     }
 }
 
-impl Responder for TrackEntity {
+impl Responder for MediaEntity {
     type Body = BoxBody;
 
     fn respond_to(self, _req: &actix_web::HttpRequest) -> HttpResponse<Self::Body> {
-        let body = OutTrackEntityDto::from(self);
+        let body = OutMediaEntityDto::from(self);
         HttpResponse::Ok()
             .content_type(ContentType::json())
             .body(serde_json::to_string(&body).unwrap())
     }
 }
 
-impl FromSqliteRow for TrackEntity {
+impl FromSqliteRow for MediaEntity {
     fn from_row(row: sqlx::sqlite::SqliteRow) -> Option<Self>
     where
         Self: Sized,
@@ -135,7 +187,10 @@ impl FromSqliteRow for TrackEntity {
             match column.name() {
                 "internal_id" => entity.internal_id = row.get(column.name()),
                 "id" => entity.id = row.get(column.name()),
-                "title" => entity.title = row.get(column.name()),
+                "filename" => entity.filename = row.get(column.name()),
+                "media_type" => {
+                    entity.media_type = MediaType::from(row.get::<String, &str>(column.name()))
+                }
                 "path" => entity.path = row.get(column.name()),
                 "metadata" => {
                     let value: String = row.get(column.name());
@@ -144,7 +199,7 @@ impl FromSqliteRow for TrackEntity {
                     }
                 }
 
-                _ => panic!("New field added to the tracks table"),
+                _ => panic!("New field added to the media table"),
             }
         }
 

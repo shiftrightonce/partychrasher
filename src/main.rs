@@ -30,6 +30,8 @@ async fn main() {
     let mut path_to_scan = String::new();
     let mut seed_total = 0;
 
+    create_db_folder().await;
+
     match cli.command {
         Some(cmd) => match cmd {
             Commands::Both => {
@@ -89,11 +91,15 @@ async fn main() {
                 db_manager,
             )
             .await;
+        } else if app_config.is_cli_enabled() {
+            loop {
+                std::thread::sleep(std::time::Duration::from_millis(500));
+            }
         }
     } else if seeding {
         seeder::run_seeders(&db_manager, seed_total).await;
     } else if scanning {
-        scanner::scan(path_to_scan).await;
+        scanner::scan(path_to_scan, &db_manager).await;
     }
 }
 
@@ -117,4 +123,9 @@ enum Commands {
         #[arg(short, long)]
         path: String,
     },
+}
+
+async fn create_db_folder() {
+    _ = tokio::fs::create_dir_all("./db").await;
+    _ = tokio::fs::create_dir_all("./static").await;
 }

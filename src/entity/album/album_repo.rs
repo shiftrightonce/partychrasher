@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use futures::stream::TryStreamExt;
 use sqlx::sqlite::SqliteRow;
 use ulid::Ulid;

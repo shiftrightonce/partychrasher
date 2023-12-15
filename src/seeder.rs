@@ -1,11 +1,15 @@
 use crate::{
     db::DbManager,
     entity::{
-        album::InAlbumEntityDto, album_artist::InAlbumArtistEntityDto,
-        album_track::InAlbumTrackEntityDto, artist::InArtistEntityDto,
-        artist_track::InArtistTrackEntityDto, client::InClientEntityDto,
-        playlist::InPlaylistEntityDto, playlist_tracks::InPlaylistTrackEntityDto,
-        track::InTrackEntityDto,
+        album::InAlbumEntityDto,
+        album_artist::InAlbumArtistEntityDto,
+        album_track::InAlbumTrackEntityDto,
+        artist::InArtistEntityDto,
+        artist_track::InArtistTrackEntityDto,
+        client::InClientEntityDto,
+        playlist::InPlaylistEntityDto,
+        playlist_tracks::InPlaylistTrackEntityDto,
+        track::{InTrackEntityDto, TrackMetadata},
     },
 };
 
@@ -57,8 +61,11 @@ async fn seed_tracks(db_manager: &DbManager, total: u64) {
     for i in 0..total {
         let title = format!("track {}", i + 1);
         let path = Some(paths.choose(&mut rng).unwrap().to_string());
-        let metadata = None;
-        let track = InTrackEntityDto::new(&title, path, metadata);
+        let mut metadata = TrackMetadata::default();
+
+        metadata.title = title.clone();
+
+        let track = InTrackEntityDto::new(&title, path, Some(metadata));
         if let Some(track) = track_repo.create(track).await {
             for artist in artist_repo.select_random(rng.gen_range(1..=5)).await {
                 _ = artist_track_repo

@@ -26,5 +26,4 @@ pub(crate) fn config_api_service(config: &mut web::ServiceConfig) {
     api_routes = v1_file_server::register_routes(api_routes);
 
     config.service(api_routes.wrap(auth_middleware::Auth));
-    // app.service(service);
 }

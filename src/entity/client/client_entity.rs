@@ -52,19 +52,6 @@ impl TryFrom<&HttpRequest> for ClientEntity {
 }
 
 impl ClientEntity {
-    pub(crate) fn new(name: &str, role: Option<Role>) -> Self {
-        let mut client = Self {
-            name: name.to_string(),
-            ..Self::default()
-        };
-
-        if let Some(r) = role {
-            client.role = r;
-        }
-
-        client
-    }
-
     pub(crate) fn default_admin() -> Self {
         Self {
             role: Role::Admin,
@@ -74,10 +61,6 @@ impl ClientEntity {
 
     pub(crate) fn default_user() -> Self {
         Self::default()
-    }
-
-    pub(crate) fn internal_id(&self) -> Option<i64> {
-        self.internal_id
     }
 
     pub(crate) fn api_token(&self) -> String {

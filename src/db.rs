@@ -15,6 +15,7 @@ use crate::{
         artist::ArtistRepo,
         artist_track::ArtistTrackRepo,
         client::{ClientEntity, ClientRepo},
+        media::MediaRepo,
         playlist::PlaylistRepo,
         playlist_tracks::PlaylistTracksRepo,
         track::TrackRepo,
@@ -89,6 +90,10 @@ impl DbManager {
         ArtistTrackRepo::new(self.pool.clone())
     }
 
+    pub(crate) fn media_repo(&self) -> MediaRepo {
+        MediaRepo::new(self.pool.clone())
+    }
+
     pub(crate) async fn setup_db(&self) {
         // clients table
         if let Some(client) = self.client_repo().setup_table().await {
@@ -127,6 +132,9 @@ impl DbManager {
 
         // artist tracks table
         self.artist_track_repo().setup_table().await;
+
+        // media table
+        self.media_repo().setup_table().await;
     }
 }
 

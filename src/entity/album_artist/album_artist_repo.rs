@@ -1,4 +1,11 @@
-use crate::{db::DbConnection, entity::FromSqliteRow};
+#![allow(dead_code)]
+
+use futures_util::TryStreamExt;
+
+use crate::{
+    db::DbConnection,
+    entity::{track::TrackEntity, FromSqliteRow},
+};
 
 use super::{AlbumArtistEntity, InAlbumArtistEntityDto};
 
@@ -57,5 +64,21 @@ CREATE TABLE "album_artists" (
         }
 
         None
+    }
+
+    pub(crate) async fn search(&self, keyword: &str) -> Vec<TrackEntity> {
+        let sql = "SELECT * FROM tracks WHERE title LIKE = ? LIMIT 100";
+        let mut results = Vec::new();
+
+        let mut result_stream = sqlx::query(sql)
+            .bind(format!("{}%", keyword))
+            .map(TrackEntity::from_row)
+            .fetch(self.pool());
+
+        while let Ok(Some(Some(row))) = result_stream.try_next().await {
+            results.push(row);
+        }
+
+        results
     }
 }

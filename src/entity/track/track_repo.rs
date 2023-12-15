@@ -1,5 +1,6 @@
 use futures::stream::TryStreamExt;
 use sqlx::sqlite::SqliteRow;
+use sqlx::Row;
 use ulid::Ulid;
 
 use crate::db::{DbConnection, Paginator, PaginatorDirection};
@@ -27,7 +28,8 @@ impl TrackRepo {
 	"title"	TEXT NOT NULL,
 	"path"	TEXT NOT NULL,
 	"metadata"	TEXT,
-	PRIMARY KEY("internal_id" AUTOINCREMENT)
+	PRIMARY KEY("internal_id" AUTOINCREMENT),
+    UNIQUE("title", "path")
 );"#;
 
         _ = sqlx::query(sql).execute(self.pool()).await;
@@ -72,7 +74,7 @@ impl TrackRepo {
             .bind(&id)
             .bind(entity.title)
             .bind(entity.path.unwrap_or_default())
-            .bind(entity.metadata.unwrap_or_default())
+            .bind(entity.metadata.unwrap_or_default().to_string())
             .execute(self.pool())
             .await
         {
@@ -84,13 +86,28 @@ impl TrackRepo {
         None
     }
 
+    pub(crate) async fn create_or_update(&self, entity: InTrackEntityDto) -> Option<TrackEntity> {
+        if let Ok(id) = sqlx::query(r#"SELECT "id" FROM tracks WHERE title = ? AND path = ?"#)
+            .bind(&entity.title)
+            .bind(&entity.path)
+            .map(|row: SqliteRow| row.get::<String, &str>("id"))
+            .fetch_one(self.pool())
+            .await
+        {
+            self.update(&id, entity).await
+        } else {
+            self.create(entity).await
+        }
+    }
+
     pub(crate) async fn update(&self, id: &str, entity: InTrackEntityDto) -> Option<TrackEntity> {
         let sql = "UPDATE tracks SET title = ?, path = ?, metadata = ? WHERE id = ?";
         if let Some(existing) = self.find_by_id(id).await {
             if sqlx::query(sql)
                 .bind(entity.title)
                 .bind(entity.path.unwrap_or(existing.path))
-                .bind(entity.metadata.unwrap_or(existing.metadata))
+                .bind(entity.metadata.unwrap_or(existing.metadata).to_string())
+                .bind(id)
                 .execute(self.pool())
                 .await
                 .is_ok()
