@@ -24,8 +24,8 @@ pub(crate) async fn serve(
     let db_manager = req.app_data::<Arc<DbManager>>().unwrap();
 
     let the_id = id.into_inner();
-    if let Some(track) = db_manager.track_repo().find_by_id(&the_id).await {
-        actix_files::NamedFile::open(track.path).map_err(Into::into)
+    if let Some(media) = db_manager.media_repo().find_media_by_track(&the_id).await {
+        actix_files::NamedFile::open(media.path).map_err(Into::into)
     } else {
         Err(ErrorNotFound(format!(
             "file with ID: {:?} not found",
