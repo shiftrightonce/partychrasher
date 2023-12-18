@@ -148,6 +148,20 @@ impl MediaRepo {
         None
     }
 
+    pub(crate) async fn find_media_by_track(&self, track_id: &str) -> Option<MediaEntity> {
+        let sql = r#"SELECT media.internal_id as internal_id, media.id as "id", media.filename as filename, media.media_type as media_type, media.path as path  FROM media LEFT JOIN tracks on tracks.media_id = media.id WHERE tracks.id = ?"#;
+        if let Ok(row) = sqlx::query(sql)
+            .bind(track_id)
+            .map(MediaEntity::from_row)
+            .fetch_one(self.pool())
+            .await
+        {
+            return row;
+        }
+
+        None
+    }
+
     pub(crate) async fn select_random(&self, limit: i64) -> Vec<MediaEntity> {
         let sql = "SELECT * FROM media ORDER BY RANDOM() LIMIT ?";
         let mut results = Vec::new();
