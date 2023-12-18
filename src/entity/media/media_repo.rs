@@ -109,8 +109,8 @@ impl MediaRepo {
             if sqlx::query(sql)
                 .bind(entity.filename)
                 .bind(entity.path.unwrap_or(existing.path))
-                .bind(entity.metadata.unwrap_or(existing.metadata).to_string())
                 .bind(entity.media_type.unwrap_or(existing.media_type).to_string())
+                .bind(entity.metadata.unwrap_or(existing.metadata).to_string())
                 .bind(id)
                 .execute(self.pool())
                 .await
