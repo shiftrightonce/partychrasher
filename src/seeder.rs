@@ -7,6 +7,7 @@ use crate::{
         artist::InArtistEntityDto,
         artist_track::InArtistTrackEntityDto,
         client::InClientEntityDto,
+        media::{InMediaEntityDto, MediaEntity, MediaMetadata, MediaType},
         playlist::InPlaylistEntityDto,
         playlist_tracks::InPlaylistTrackEntityDto,
         track::{InTrackEntityDto, TrackMetadata},
@@ -48,6 +49,7 @@ async fn seed_tracks(db_manager: &DbManager, total: u64) {
     let track_repo = db_manager.track_repo();
     let artist_track_repo = db_manager.artist_track_repo();
     let artist_repo = db_manager.artist_repo();
+    let media_repo = db_manager.media_repo();
     let mut rng = rand::thread_rng();
     let paths = [
         "./music/allthat.mp3",
@@ -61,21 +63,28 @@ async fn seed_tracks(db_manager: &DbManager, total: u64) {
     for i in 0..total {
         let title = format!("track {}", i + 1);
         let path = Some(paths.choose(&mut rng).unwrap().to_string());
-        let mut metadata = TrackMetadata::default();
 
-        metadata.title = title.clone();
+        let media = InMediaEntityDto {
+            filename: title.to_string(),
+            path,
+            media_type: Some(MediaType::Audio),
+            metadata: None,
+        };
 
-        let track = InTrackEntityDto::new(&title, path, Some(metadata));
-        if let Some(track) = track_repo.create(track).await {
-            for artist in artist_repo.select_random(rng.gen_range(1..=5)).await {
-                _ = artist_track_repo
-                    .create(InArtistTrackEntityDto {
-                        artist_id: artist.id,
-                        track_id: track.id.clone(),
-                        is_feature: rand::random(),
-                        metadata: None,
-                    })
-                    .await;
+        if let Some(media) = media_repo.create_or_update(media).await {
+            if let Ok(track) = media.try_into() {
+                if let Some(track) = track_repo.create(track).await {
+                    for artist in artist_repo.select_random(rng.gen_range(1..=5)).await {
+                        _ = artist_track_repo
+                            .create(InArtistTrackEntityDto {
+                                artist_id: artist.id,
+                                track_id: track.id.clone(),
+                                is_feature: rand::random(),
+                                metadata: None,
+                            })
+                            .await;
+                    }
+                }
             }
         }
     }
