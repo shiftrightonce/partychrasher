@@ -1,6 +1,10 @@
-use std::sync::Arc;
+use std::{collections::HashMap, sync::Arc};
 
-use actix_web::{delete, get, put, web, HttpRequest, Responder, Scope};
+use actix_web::{
+    delete, get, put,
+    web::{self, Query},
+    HttpRequest, Responder, Scope,
+};
 
 use crate::{
     db::{DbManager, PaginatedResult, Paginator},
@@ -14,6 +18,7 @@ pub(crate) fn register_routes(scope: Scope) -> Scope {
         // .service(create_track)
         .service(update_track)
         .service(delete_tracks)
+        .service(search)
         .service(get_a_track)
         .service(get_tracks_by_album)
         .service(get_tracks_by_playlist)
@@ -159,5 +164,31 @@ async fn delete_tracks(req: HttpRequest, id: web::Path<String>) -> impl Responde
             .delete(&id.into_inner())
             .await
             .map(OutTrackEntityDto::from),
+    )
+}
+
+#[get("tracks/search")]
+async fn search(req: HttpRequest) -> impl Responder {
+    let (_, response) = when_user::<OutTrackEntityDto>(&req).await;
+
+    if response.is_some() {
+        return response.unwrap();
+    }
+    let db_manager = req.app_data::<Arc<DbManager>>().unwrap();
+    let mut keyword = String::new();
+
+    let query = Query::<HashMap<String, String>>::from_query(req.query_string()).unwrap();
+    if let Some(query) = query.get("_q") {
+        keyword = query.clone();
+    }
+
+    ApiResponse::success_response(
+        db_manager
+            .track_repo()
+            .search(&keyword)
+            .await
+            .into_iter()
+            .map(OutTrackEntityDto::from)
+            .collect::<Vec<OutTrackEntityDto>>(),
     )
 }
