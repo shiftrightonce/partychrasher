@@ -3,8 +3,8 @@ use actix_web::http::header::ContentType;
 use actix_web::{HttpResponse, Responder};
 use sqlx::Column;
 use sqlx::Row;
-use symphonia::core::meta::Tag;
 
+use crate::entity::media::MediaMetadata;
 use crate::entity::FromSqliteRow;
 
 #[derive(Debug, Default)]
@@ -12,22 +12,26 @@ pub(crate) struct TrackEntity {
     pub(crate) internal_id: i64,
     pub(crate) id: String,
     pub(crate) title: String,
-    pub(crate) path: String,
+    pub(crate) media_id: String,
     pub(crate) metadata: TrackMetadata,
 }
 
 #[derive(Debug, serde::Deserialize)]
 pub(crate) struct InTrackEntityDto {
     pub(crate) title: String,
-    pub(crate) path: Option<String>,
+    pub(crate) media_id: Option<String>,
     pub(crate) metadata: Option<TrackMetadata>,
 }
 
 impl InTrackEntityDto {
-    pub(crate) fn new(title: &str, path: Option<String>, metadata: Option<TrackMetadata>) -> Self {
+    pub(crate) fn new(
+        title: &str,
+        media_id: Option<String>,
+        metadata: Option<TrackMetadata>,
+    ) -> Self {
         Self {
             title: title.to_string(),
-            path,
+            media_id,
             metadata,
         }
     }
@@ -37,10 +41,10 @@ impl From<TrackEntity> for InTrackEntityDto {
     fn from(entity: TrackEntity) -> Self {
         Self {
             title: entity.title,
-            path: if entity.path.is_empty() {
+            media_id: if entity.media_id.is_empty() {
                 None
             } else {
-                Some(entity.path)
+                Some(entity.media_id)
             },
             metadata: Some(entity.metadata),
         }
@@ -56,35 +60,15 @@ pub(crate) struct TrackMetadata {
     pub(crate) track_number: String,
 }
 
-impl From<&[Tag]> for TrackMetadata {
-    fn from(tags: &[Tag]) -> Self {
-        let mut metadata = Self::default();
-
-        for a_tag in tags.iter() {
-            let key = if let Some(k) = a_tag.std_key {
-                format!("{:?}", k).to_lowercase()
-            } else {
-                if a_tag.key.len() > 26 {
-                    a_tag.key.to_lowercase().split_at(26).0.to_string()
-                } else {
-                    a_tag.key.to_lowercase().clone()
-                }
-            };
-
-            if key.contains("priv:") {
-                continue;
-            }
-            match key.as_str() {
-                "title" | "tracktitle" => metadata.title = a_tag.value.to_string(),
-                "album" => metadata.album = a_tag.value.to_string(),
-                "artist" => metadata.artist = a_tag.value.to_string(),
-                "genre" => metadata.genre = a_tag.value.to_string(),
-                "tracknumber" => metadata.track_number = a_tag.value.to_string(),
-                _ => (),
-            }
+impl From<&MediaMetadata> for TrackMetadata {
+    fn from(entity: &MediaMetadata) -> Self {
+        Self {
+            title: entity.title.clone(),
+            artist: entity.artist.clone(),
+            album: entity.album.clone(),
+            genre: entity.genre.clone(),
+            track_number: entity.track_number.clone(),
         }
-
-        metadata
     }
 }
 
@@ -98,7 +82,6 @@ impl ToString for TrackMetadata {
 pub(crate) struct OutTrackEntityDto {
     id: String,
     title: String,
-    path: String,
     metadata: TrackMetadata,
 }
 
@@ -107,7 +90,6 @@ impl From<TrackEntity> for OutTrackEntityDto {
         Self {
             id: entity.id,
             title: entity.title,
-            path: entity.path,
             metadata: entity.metadata,
         }
     }
@@ -136,7 +118,7 @@ impl FromSqliteRow for TrackEntity {
                 "internal_id" => entity.internal_id = row.get(column.name()),
                 "id" => entity.id = row.get(column.name()),
                 "title" => entity.title = row.get(column.name()),
-                "path" => entity.path = row.get(column.name()),
+                "media_id" => entity.media_id = row.get(column.name()),
                 "metadata" => {
                     let value: String = row.get(column.name());
                     if let Ok(metadata) = serde_json::from_str(value.as_str()) {
