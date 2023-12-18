@@ -10,7 +10,11 @@ use tokio::fs::DirEntry;
 
 use crate::{
     db::DbManager,
-    entity::media::{InMediaEntityDto, MediaMetadata, MediaType},
+    entity::{
+        artist::InArtistEntityDto,
+        artist_track::InArtistTrackEntityDto,
+        media::{InMediaEntityDto, MediaEntity, MediaMetadata, MediaType},
+    },
 };
 
 pub(crate) async fn scan(path: String, db_manager: &DbManager) {
@@ -37,7 +41,8 @@ async fn walk_dir(path: PathBuf, db_manager: &DbManager) {
 }
 
 async fn process_entry(entry: DirEntry, db_manager: &DbManager) {
-    let exts = ["mp3"];
+    // TODO: This should come from the configuration
+    let exts = ["mp3", "aac", "m4a", "wav", "ogg", "wma", "webm", "flac"];
 
     if let Some(ext) = entry.path().extension() {
         if exts.contains(&ext.to_str().unwrap()) {
@@ -73,20 +78,20 @@ async fn process_entry(entry: DirEntry, db_manager: &DbManager) {
                 }
             }
 
-            _ = db_manager
+            if let Some(the_media) = db_manager
                 .media_repo()
-                .create_or_update(InMediaEntityDto::new(
+                .create_or_update(InMediaEntityDto::new_from_str(
                     entry.file_name().to_str().unwrap(),
-                    Some(match ext.to_str().unwrap() {
-                        "mp3" | "acc" | "m4a" | "flacc" | "wav" => MediaType::Audio,
-                        "mp4" | "avi" => MediaType::Video,
-                        "jpg" | "png" | "gif" => MediaType::Photo,
-                        _ => MediaType::default(),
-                    }),
+                    ext.to_str().unwrap(),
                     Some(entry.path().to_str().unwrap().to_owned()),
                     Some(media_metadata),
                 ))
-                .await;
+                .await
+            {
+                if the_media.is_audio() {
+                    add_track(the_media, db_manager).await;
+                }
+            }
         }
     }
 }
@@ -98,5 +103,34 @@ async fn process_probe_result(mut probed: ProbeResult) -> Option<MediaMetadata> 
         Some(MediaMetadata::from(metadata_rev.tags()))
     } else {
         None
+    }
+}
+
+async fn add_track(media: MediaEntity, db_manager: &DbManager) {
+    if let Ok(track) = media.try_into() {
+        if let Some(track) = db_manager.track_repo().create_or_update(track).await {
+            if !track.metadata.artist.is_empty() {
+                // create or update the artist record
+                if let Some(artist) = db_manager
+                    .artist_repo()
+                    .create_or_update(InArtistEntityDto {
+                        name: track.metadata.artist.clone(),
+                        metadata: None,
+                    })
+                    .await
+                {
+                    // assign this track to this artist
+                    _ = db_manager
+                        .artist_track_repo()
+                        .create(InArtistTrackEntityDto {
+                            artist_id: artist.id,
+                            track_id: track.id,
+                            is_feature: false,
+                            metadata: None,
+                        })
+                        .await;
+                }
+            }
+        }
     }
 }
