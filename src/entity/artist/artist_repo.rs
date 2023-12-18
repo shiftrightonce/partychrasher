@@ -71,6 +71,19 @@ impl ArtistRepo {
         None
     }
 
+    pub async fn create_or_update(&self, artist: InArtistEntityDto) -> Option<ArtistEntity> {
+        if let Ok(Some(existing)) = sqlx::query("SELECT * FROM artists WHERE name = ?")
+            .bind(&artist.name)
+            .map(ArtistEntity::from_row)
+            .fetch_one(self.pool())
+            .await
+        {
+            self.update(&existing.id, artist).await
+        } else {
+            self.create(artist).await
+        }
+    }
+
     pub(crate) async fn paginate(&self, paginator: &mut Paginator) -> Vec<ArtistEntity> {
         let params = vec![paginator.last_value.clone(), paginator.limit.to_string()];
         let mut rows = Vec::new();
