@@ -5,9 +5,10 @@ use sqlx::Column;
 use sqlx::Row;
 use symphonia::core::meta::Tag;
 
+use crate::entity::track::{InTrackEntityDto, TrackMetadata};
 use crate::entity::FromSqliteRow;
 
-#[derive(Debug, serde::Deserialize, serde::Serialize)]
+#[derive(Debug, serde::Deserialize, serde::Serialize, PartialEq, PartialOrd)]
 pub(crate) enum MediaType {
     #[serde(rename(deserialize = "video", serialize = "video"))]
     Video,
@@ -58,6 +59,32 @@ pub(crate) struct MediaEntity {
     pub(crate) metadata: MediaMetadata,
 }
 
+impl MediaEntity {
+    pub(crate) fn is_audio(&self) -> bool {
+        self.media_type == MediaType::Audio
+    }
+}
+
+impl TryInto<InTrackEntityDto> for MediaEntity {
+    type Error = String;
+    fn try_into(self) -> Result<InTrackEntityDto, Self::Error> {
+        if self.is_audio() {
+            let title = if self.metadata.title.is_empty() {
+                self.filename.clone()
+            } else {
+                self.metadata.title.clone()
+            };
+            Ok(InTrackEntityDto::new(
+                &title,
+                Some(self.id.clone()),
+                Some(TrackMetadata::from(&self.metadata)),
+            ))
+        } else {
+            Err("media file is not an audio file".to_string())
+        }
+    }
+}
+
 #[derive(Debug, serde::Deserialize)]
 pub(crate) struct InMediaEntityDto {
     pub(crate) filename: String,
@@ -80,6 +107,25 @@ impl InMediaEntityDto {
             metadata,
         }
     }
+
+    pub(crate) fn new_from_str(
+        filename: &str,
+        extension: &str,
+        path: Option<String>,
+        metadata: Option<MediaMetadata>,
+    ) -> Self {
+        Self {
+            filename: filename.to_string(),
+            media_type: Some(match extension.trim().to_lowercase().as_str() {
+                "mp3" | "aac" | "m4a" | "wav" | "ogg" | "wma" | "webm" | "flac" => MediaType::Audio,
+                "mp4" | "avi" => MediaType::Video,
+                "jpg" | "png" | "gif" => MediaType::Photo,
+                _ => MediaType::default(),
+            }),
+            path,
+            metadata,
+        }
+    }
 }
 
 impl From<MediaEntity> for InMediaEntityDto {
@@ -97,7 +143,7 @@ impl From<MediaEntity> for InMediaEntityDto {
     }
 }
 
-#[derive(Debug, Default, serde::Deserialize, serde::Serialize)]
+#[derive(Debug, Default, serde::Deserialize, serde::Serialize, Clone)]
 pub(crate) struct MediaMetadata {
     pub(crate) title: String,
     pub(crate) artist: String,
@@ -199,7 +245,7 @@ impl FromSqliteRow for MediaEntity {
                     }
                 }
 
-                _ => panic!("New field added to the media table"),
+                _ => panic!("New field added to the media table: {:?}", column.name()),
             }
         }
 
