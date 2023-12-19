@@ -28,38 +28,43 @@ impl AlbumRepo {
         let sql = r#"CREATE TABLE "albums" (
 	"internal_id"	INTEGER,
 	"id"	TEXT NOT NULL UNIQUE,
-	"title"	TEXT UNIQUE,
+	"title"	TEXT,
+    "year" INTEGER, 
 	"metadata"	TEXT,
-	PRIMARY KEY("internal_id" AUTOINCREMENT)
+	PRIMARY KEY("internal_id" AUTOINCREMENT),
+    UNIQUE("title", "year")
 );"#;
 
         _ = sqlx::query(sql).execute(self.pool()).await;
     }
 
     pub(crate) async fn create(&self, album: InAlbumEntityDto) -> Option<AlbumEntity> {
-        let sql = "INSERT OR IGNORE INTO albums (id, title, metadata) values (?, ?, ?)";
+        let sql = "INSERT OR IGNORE INTO albums (id, title, metadata, year) values (?, ?, ?, ?)";
 
         let id = Ulid::new().to_string().to_lowercase();
 
-        if sqlx::query(sql)
+        if let Err(e) = sqlx::query(sql)
             .bind(&id)
             .bind(album.title)
-            .bind(album.metadata.unwrap_or_default())
+            .bind(album.metadata.unwrap_or_default().to_string())
+            .bind(album.year.unwrap_or_default())
             .execute(self.pool())
             .await
-            .is_ok()
         {
+            println!("album error: {:?}", e);
+        } else {
             return self.find_by_id(&id).await;
         }
         None
     }
 
     pub(crate) async fn update(&self, id: &str, album: InAlbumEntityDto) -> Option<AlbumEntity> {
-        let sql = "UPDATE albums set title =?, metadata = ? WHERE id = ?";
+        let sql = "UPDATE albums set title =?, metadata = ?, year = ? WHERE id = ?";
         if let Some(existing) = self.find_by_id(id).await {
             if sqlx::query(sql)
                 .bind(album.title)
-                .bind(album.metadata.unwrap_or(existing.metadata))
+                .bind(album.metadata.unwrap_or(existing.metadata).to_string())
+                .bind(album.year.unwrap_or(existing.year))
                 .bind(id)
                 .execute(self.pool())
                 .await
