@@ -170,7 +170,7 @@ impl AlbumRepo {
     }
 
     pub(crate) async fn search(&self, keyword: &str) -> Vec<AlbumEntity> {
-        let sql = "SELECT * FROM albums WHERE title LIKE = ? LIMIT 100";
+        let sql = "SELECT * FROM albums WHERE title LIKE ? LIMIT 100";
         let mut results = Vec::new();
 
         let mut result_stream = sqlx::query(sql)

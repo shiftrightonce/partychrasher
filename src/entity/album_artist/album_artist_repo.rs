@@ -67,7 +67,7 @@ CREATE TABLE "album_artists" (
     }
 
     pub(crate) async fn search(&self, keyword: &str) -> Vec<TrackEntity> {
-        let sql = "SELECT * FROM tracks WHERE title LIKE = ? LIMIT 100";
+        let sql = "SELECT * FROM tracks WHERE title LIKE ? LIMIT 100";
         let mut results = Vec::new();
 
         let mut result_stream = sqlx::query(sql)
