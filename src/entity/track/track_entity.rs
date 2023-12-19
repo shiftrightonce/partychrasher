@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use actix_web::body::BoxBody;
 use actix_web::http::header::ContentType;
 use actix_web::{HttpResponse, Responder};
@@ -57,7 +59,10 @@ pub(crate) struct TrackMetadata {
     pub(crate) artist: String,
     pub(crate) album: String,
     pub(crate) genre: String,
-    pub(crate) track_number: String,
+    pub(crate) track: u32,
+    pub(crate) disk: u32,
+    pub(crate) year: u32,
+    pub(crate) pictures: HashMap<String, String>,
 }
 
 impl From<&MediaMetadata> for TrackMetadata {
@@ -67,7 +72,10 @@ impl From<&MediaMetadata> for TrackMetadata {
             artist: entity.artist.clone(),
             album: entity.album.clone(),
             genre: entity.genre.clone(),
-            track_number: entity.track_number.clone(),
+            track: entity.track,
+            disk: entity.disk,
+            year: entity.year,
+            pictures: entity.pictures.clone(),
         }
     }
 }
