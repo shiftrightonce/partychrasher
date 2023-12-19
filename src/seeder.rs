@@ -7,10 +7,9 @@ use crate::{
         artist::InArtistEntityDto,
         artist_track::InArtistTrackEntityDto,
         client::InClientEntityDto,
-        media::{InMediaEntityDto, MediaEntity, MediaMetadata, MediaType},
+        media::{InMediaEntityDto, MediaType},
         playlist::InPlaylistEntityDto,
         playlist_tracks::InPlaylistTrackEntityDto,
-        track::{InTrackEntityDto, TrackMetadata},
     },
 };
 
@@ -104,6 +103,7 @@ async fn seed_albums(db_manager: &DbManager, total: u64) {
         if let Some(album) = album_repo
             .create(InAlbumEntityDto {
                 title,
+                year: Some(rng.gen_range(1990..=2023)),
                 metadata: None,
             })
             .await
