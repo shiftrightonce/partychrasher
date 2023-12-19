@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use actix_web::body::BoxBody;
 use actix_web::http::header::ContentType;
 use actix_web::{HttpResponse, Responder};
-use lofty::{Accessor, Tag, TaggedFileExt};
+use lofty::{Accessor, Tag};
 use sqlx::Column;
 use sqlx::Row;
 
@@ -116,20 +116,6 @@ pub(crate) struct InMediaEntityDto {
 }
 
 impl InMediaEntityDto {
-    pub(crate) fn new(
-        filename: &str,
-        media_type: Option<MediaType>,
-        path: Option<String>,
-        metadata: Option<MediaMetadata>,
-    ) -> Self {
-        Self {
-            filename: filename.to_string(),
-            media_type,
-            path,
-            metadata,
-        }
-    }
-
     pub(crate) fn new_from_str(
         filename: &str,
         extension: &str,

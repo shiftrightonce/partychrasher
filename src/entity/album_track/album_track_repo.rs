@@ -28,10 +28,12 @@ CREATE TABLE "album_tracks" (
     }
 
     pub(crate) async fn create(&self, entity: InAlbumTrackEntityDto) -> Option<AlbumTrackEntity> {
-        let sql = "INSERT OR IGNORE INTO album_tracks (album_id, track_id) values (?, ?)";
+        let sql =
+            "INSERT OR IGNORE INTO album_tracks (album_id, track_id, metadata) values (?, ?, ?)";
         if let Err(e) = sqlx::query(sql)
             .bind(&entity.album_id)
             .bind(&entity.track_id)
+            .bind(&entity.metadata)
             .execute(self.pool())
             .await
         {

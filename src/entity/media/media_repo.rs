@@ -1,9 +1,8 @@
-use futures::stream::TryStreamExt;
 use sqlx::sqlite::SqliteRow;
 use sqlx::Row;
 use ulid::Ulid;
 
-use crate::db::{DbConnection, Paginator, PaginatorDirection};
+use crate::db::DbConnection;
 use crate::entity::FromSqliteRow;
 
 use super::{InMediaEntityDto, MediaEntity};
@@ -36,34 +35,6 @@ impl MediaRepo {
         if let Err(e) = sqlx::query(sql).execute(self.pool()).await {
             dbg!(e);
         }
-    }
-
-    pub(crate) async fn paginate(&self, paginator: &mut Paginator) -> Vec<MediaEntity> {
-        let params = vec![paginator.last_value.clone(), paginator.limit.to_string()];
-        let mut rows = Vec::new();
-        let sql = match &paginator.direction {
-            PaginatorDirection::Next => "select * from media where id > ?  order by id asc limit ?",
-            PaginatorDirection::Previous => {
-                "select * from media where id < ?  order by id asc limit ?"
-            }
-        };
-
-        let mut query = sqlx::query(sql);
-
-        for a_param in params {
-            query = query.bind(a_param);
-        }
-
-        let mut result_stream = query
-            .map(|row: SqliteRow| MediaEntity::from_row(row))
-            .fetch(self.pool());
-
-        while let Ok(Some(Some(result))) = result_stream.try_next().await {
-            paginator.last_value = result.id.clone();
-            rows.push(result)
-        }
-
-        rows
     }
 
     pub(crate) async fn create(&self, entity: InMediaEntityDto) -> Option<MediaEntity> {
@@ -123,17 +94,6 @@ impl MediaRepo {
         None
     }
 
-    pub(crate) async fn delete(&self, id: &str) -> Option<MediaEntity> {
-        let sql = "DELETE FROM media WHERE id = ?";
-        if let Some(track) = self.find_by_id(id).await {
-            if sqlx::query(sql).bind(id).execute(self.pool()).await.is_ok() {
-                return Some(track);
-            }
-        }
-
-        None
-    }
-
     pub(crate) async fn find_by_id(&self, id: &str) -> Option<MediaEntity> {
         let sql = "SELECT * FROM media WHERE id = ?";
         if let Ok(row) = sqlx::query(sql)
@@ -179,21 +139,5 @@ impl MediaRepo {
         }
 
         None
-    }
-
-    pub(crate) async fn select_random(&self, limit: i64) -> Vec<MediaEntity> {
-        let sql = "SELECT * FROM media ORDER BY RANDOM() LIMIT ?";
-        let mut results = Vec::new();
-
-        let mut result_stream = sqlx::query(sql)
-            .bind(limit)
-            .map(MediaEntity::from_row)
-            .fetch(self.pool());
-
-        while let Ok(Some(Some(row))) = result_stream.try_next().await {
-            results.push(row)
-        }
-
-        results
     }
 }

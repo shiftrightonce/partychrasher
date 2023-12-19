@@ -61,40 +61,4 @@ CREATE TABLE "artist_tracks" (
 
         None
     }
-
-    pub(crate) async fn update(&self, entity: InArtistTrackEntityDto) -> Option<ArtistTrackEntity> {
-        if let Some(existing) = self.find(&entity.artist_id, &entity.track_id).await {
-            if sqlx::query("UPDATE artist_tracks set is_feature = ?, metadata = ? WHERE artist_id = ? AND track_id = ?")
-            .bind(entity.is_feature)
-            .bind(entity.metadata.unwrap_or(existing.metadata.clone()))
-            .bind(entity.artist_id)
-            .bind(entity.track_id)
-            .execute(self.pool())
-            .await.is_ok()  {
-               return Some(existing)
-            }
-        }
-
-        None
-    }
-
-    pub(crate) async fn delete(
-        &self,
-        artist_id: &str,
-        track_id: &str,
-    ) -> Option<ArtistTrackEntity> {
-        if let Some(existing) = self.find(artist_id, track_id).await {
-            if sqlx::query("DELETE FROM artist_tracksWHERE artist_id = ? AND track_id = ?")
-                .bind(artist_id)
-                .bind(track_id)
-                .execute(self.pool())
-                .await
-                .is_ok()
-            {
-                return Some(existing);
-            }
-        }
-
-        None
-    }
 }

@@ -1,10 +1,5 @@
-use std::collections::HashMap;
-
 use crate::{db::DbConnection, entity::FromSqliteRow, helper::generate_id};
 use futures::stream::TryStreamExt;
-use sqlx::sqlite::SqliteRow;
-use sqlx::Row;
-use ulid::Ulid;
 
 use super::{InSearchHitEntityDto, SearchEntity, SearchHitEntity};
 

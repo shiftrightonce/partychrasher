@@ -27,7 +27,6 @@ mod api;
 mod api_response;
 mod auth_middleware;
 mod docs;
-mod manage_client;
 mod query;
 mod user;
 

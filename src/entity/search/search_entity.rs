@@ -20,12 +20,6 @@ pub(crate) struct InSearchHitEntityDto {
 }
 
 impl InSearchHitEntityDto {
-    pub(crate) fn metadata_from_string(&mut self, metadata: &str) {
-        if let Ok(json) = serde_json::from_str(metadata) {
-            self.metadata = json;
-        }
-    }
-
     pub(crate) fn metadata_to_string(&self) -> String {
         serde_json::to_string(&self.metadata).unwrap()
     }
@@ -93,11 +87,6 @@ impl From<SearchHitEntity> for OutSearchHitEntityDto {
             metadata: entity.metadata,
         }
     }
-}
-
-pub(crate) struct SearchPivotEntity {
-    hit_id: String,
-    search_id: String,
 }
 
 #[derive(Debug, Default, serde::Serialize, serde::Deserialize)]
