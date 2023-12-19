@@ -119,8 +119,8 @@ impl FromSqliteRow for SearchEntity {
 
 impl From<&TrackEntity> for InSearchHitEntityDto {
     fn from(track: &TrackEntity) -> Self {
-        let mut keywords = Vec::new();
-        keywords.push(track.title.clone());
+        let mut keywords = vec![track.title.clone()];
+
         if !track.metadata.genre.is_empty() {
             keywords.push(track.metadata.genre.clone());
         }
@@ -143,8 +143,7 @@ impl From<&TrackEntity> for InSearchHitEntityDto {
 
 impl From<&AlbumEntity> for InSearchHitEntityDto {
     fn from(album: &AlbumEntity) -> Self {
-        let mut keywords = Vec::new();
-        keywords.push(album.title.clone());
+        let keywords = vec![album.title.clone()];
 
         let mut metadata = Map::new();
         metadata.insert("title".to_string(), album.title.clone().into());
@@ -163,8 +162,7 @@ impl From<&AlbumEntity> for InSearchHitEntityDto {
 
 impl From<&ArtistEntity> for InSearchHitEntityDto {
     fn from(artist: &ArtistEntity) -> Self {
-        let mut keywords = Vec::new();
-        keywords.push(artist.name.clone());
+        let keywords = vec![artist.name.clone()];
 
         let mut metadata = Map::new();
         metadata.insert("name".to_string(), artist.name.clone().into());

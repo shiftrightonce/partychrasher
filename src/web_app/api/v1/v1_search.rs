@@ -16,8 +16,8 @@ pub(crate) fn register_routes(scope: Scope) -> Scope {
 async fn search(req: HttpRequest) -> impl Responder {
     let (_, response) = when_user::<OutSearchHitEntityDto>(&req).await;
 
-    if response.is_some() {
-        return response.unwrap();
+    if let Some(resp) = response {
+        return resp;
     }
 
     let db_manager = req.app_data::<Arc<DbManager>>().unwrap();

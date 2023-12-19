@@ -21,6 +21,7 @@ pub(crate) async fn serve(
     if response.is_some() {
         return Err(ErrorUnauthorized("Permission denied"));
     }
+
     let db_manager = req.app_data::<Arc<DbManager>>().unwrap();
 
     let the_id = id.into_inner();

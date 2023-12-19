@@ -161,7 +161,6 @@ fn play_music(
             track,
             seek_time,
             &decode_opts,
-            false,
             receiver,
             sync_sender,
         );
@@ -179,7 +178,6 @@ fn play(
     track_num: Option<usize>,
     seek_time: Option<f64>,
     decode_opts: &DecoderOptions,
-    no_progress: bool,
     receiver: std::sync::mpsc::Receiver<InternalPlayerCommands>,
     sync_sender: std::sync::mpsc::Sender<PlayerUpdate>,
 ) -> Result<i32> {
@@ -239,7 +237,6 @@ fn play(
             &mut audio_output,
             track_info,
             decode_opts,
-            no_progress,
             &receiver,
             &mut pause,
             &sync_sender,
@@ -276,7 +273,6 @@ fn play_track(
     audio_output: &mut Option<Box<dyn output::AudioOutput>>,
     play_opts: PlayTrackOptions,
     decode_opts: &DecoderOptions,
-    no_progress: bool,
     receiver: &std::sync::mpsc::Receiver<InternalPlayerCommands>,
     pause: &mut bool,
     sync_sender: &std::sync::mpsc::Sender<PlayerUpdate>,
@@ -360,10 +356,6 @@ fn play_track(
                 // Write the decoded audio samples to the audio output if the presentation timestamp
                 // for the packet is >= the seeked position (0 if not seeking).
                 if packet.ts() >= play_opts.seek_ts {
-                    if !no_progress {
-                        print_progress(packet.ts(), dur, tb, sync_sender);
-                    }
-
                     if let Some(audio_output) = audio_output {
                         audio_output.write(decoded).unwrap()
                     }
@@ -377,10 +369,6 @@ fn play_track(
             Err(err) => break Err(err),
         }
     };
-
-    if !no_progress {
-        println!();
-    }
 
     // Return if a fatal error occured.
     ignore_end_of_stream_error(result)?;

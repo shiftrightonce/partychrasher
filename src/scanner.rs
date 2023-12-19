@@ -239,11 +239,11 @@ async fn lofty_tag_processor(
                     let path = format!("{}/{}", dir, filename);
 
                     // Transforms `Cover Art (Other)` to `cover_art_other`
-                    let pict_type_name = media_type
-                        .unwrap()
-                        .replace(['(', ')'], "")
-                        .replace(' ', "_")
-                        .to_lowercase();
+                    let pict_type_name = if let Some(t) = media_type {
+                        t.replace(['(', ')'], "").replace(' ', "_").to_lowercase()
+                    } else {
+                        String::new()
+                    };
 
                     if let Some(media) = db_manager
                         .media_repo()
@@ -251,7 +251,7 @@ async fn lofty_tag_processor(
                         .await
                     {
                         metadata.pictures.insert(pict_type_name, media.id);
-                    } else if let Ok(_) = tokio::fs::write(&path, a_picture.data()).await {
+                    } else if tokio::fs::write(&path, a_picture.data()).await.is_ok() {
                         if let Some(media) = db_manager
                             .media_repo()
                             .create_or_update(InMediaEntityDto {

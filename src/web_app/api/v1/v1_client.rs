@@ -26,9 +26,10 @@ pub(crate) fn register_routes(scope: Scope) -> Scope {
 #[get("/clients")]
 async fn get_clients(req: HttpRequest) -> impl Responder {
     let (_, response) = when_admin::<OutClientEntityDto>(&req).await;
-    if response.is_some() {
-        return response.unwrap();
+    if let Some(resp) = response {
+        return resp;
     }
+
     let mut paginator = Paginator::try_from(&req).unwrap();
     let db_manager = req.app_data::<Arc<DbManager>>().unwrap();
 
@@ -48,8 +49,8 @@ async fn get_clients(req: HttpRequest) -> impl Responder {
 async fn get_me(req: HttpRequest) -> impl Responder {
     let (_, response) = when_user::<OutClientEntityDto>(&req).await;
 
-    if response.is_some() {
-        return response.unwrap();
+    if let Some(resp) = response {
+        return resp;
     }
 
     ApiResponse::into_response(
@@ -64,8 +65,8 @@ async fn get_a_client(id: web::Path<String>, req: HttpRequest) -> impl Responder
     let (_, response) = when_admin::<OutClientEntityDto>(&req).await;
     let select_id = id.into_inner();
 
-    if response.is_some() {
-        return response.unwrap();
+    if let Some(resp) = response {
+        return resp;
     }
 
     let db_manager = req.app_data::<Arc<DbManager>>().unwrap();
@@ -84,8 +85,8 @@ async fn get_a_client(id: web::Path<String>, req: HttpRequest) -> impl Responder
 async fn create_client(req: HttpRequest, payload: web::Json<InClientEntityDto>) -> impl Responder {
     let (_, response) = when_admin::<OutClientEntityDto>(&req).await;
 
-    if response.is_some() {
-        return response.unwrap();
+    if let Some(resp) = response {
+        return resp;
     }
 
     let db_manager = req.app_data::<Arc<DbManager>>().unwrap();
@@ -120,8 +121,8 @@ async fn update_client(
     let (_, response) = when_admin::<OutClientEntityDto>(&req).await;
     let to_update_id = id.into_inner();
 
-    if response.is_some() {
-        return response.unwrap();
+    if let Some(resp) = response {
+        return resp;
     }
 
     let db_manager = req.app_data::<Arc<DbManager>>().unwrap();
@@ -158,8 +159,8 @@ async fn delete_client(id: web::Path<String>, req: HttpRequest) -> impl Responde
     let (_, response) = when_admin::<OutClientEntityDto>(&req).await;
     let to_delete_id = id.into_inner();
 
-    if response.is_some() {
-        return response.unwrap();
+    if let Some(resp) = response {
+        return resp;
     }
 
     let db_manager = req.app_data::<Arc<DbManager>>().unwrap();
@@ -179,8 +180,8 @@ async fn reset_token(id: web::Path<String>, req: HttpRequest) -> impl Responder 
     let (_, response) = when_admin::<OutApiTokenDto>(&req).await;
     let to_reset_id = id.into_inner();
 
-    if response.is_some() {
-        return response.unwrap();
+    if let Some(resp) = response {
+        return resp;
     }
 
     let db_manager = req.app_data::<Arc<DbManager>>().unwrap();

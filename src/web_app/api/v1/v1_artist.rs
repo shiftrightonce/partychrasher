@@ -22,8 +22,8 @@ pub(crate) fn register_routes(scope: Scope) -> Scope {
 async fn get_artists(req: HttpRequest) -> impl Responder {
     let (_, response) = when_user::<OutArtistEntityDto>(&req).await;
 
-    if response.is_some() {
-        return response.unwrap();
+    if let Some(resp) = response {
+        return resp;
     }
     let mut paginator = Paginator::try_from(&req).unwrap();
     let db_manager = req.app_data::<Arc<DbManager>>().unwrap();
@@ -45,8 +45,8 @@ async fn get_artists(req: HttpRequest) -> impl Responder {
 async fn get_an_artist(req: HttpRequest, id: web::Path<String>) -> impl Responder {
     let (_, response) = when_user::<OutArtistEntityDto>(&req).await;
 
-    if response.is_some() {
-        return response.unwrap();
+    if let Some(resp) = response {
+        return resp;
     }
 
     let db_manager = req.app_data::<Arc<DbManager>>().unwrap();
@@ -64,8 +64,8 @@ async fn get_an_artist(req: HttpRequest, id: web::Path<String>) -> impl Responde
 async fn create(req: HttpRequest, payload: web::Json<InArtistEntityDto>) -> impl Responder {
     let (_, response) = when_admin::<OutArtistEntityDto>(&req).await;
 
-    if response.is_some() {
-        return response.unwrap();
+    if let Some(resp) = response {
+        return resp;
     }
 
     let db_manager = req.app_data::<Arc<DbManager>>().unwrap();
@@ -87,8 +87,8 @@ async fn update(
 ) -> impl Responder {
     let (_, response) = when_admin::<OutArtistEntityDto>(&req).await;
 
-    if response.is_some() {
-        return response.unwrap();
+    if let Some(resp) = response {
+        return resp;
     }
 
     let db_manager = req.app_data::<Arc<DbManager>>().unwrap();
@@ -106,9 +106,10 @@ async fn update(
 async fn get_artists_by_track(req: HttpRequest, track_id: web::Path<String>) -> impl Responder {
     let (_, response) = when_user::<OutArtistEntityDto>(&req).await;
 
-    if response.is_some() {
-        return response.unwrap();
+    if let Some(resp) = response {
+        return resp;
     }
+
     let db_manager = req.app_data::<Arc<DbManager>>().unwrap();
     ApiResponse::success_response(
         db_manager
@@ -125,9 +126,10 @@ async fn get_artists_by_track(req: HttpRequest, track_id: web::Path<String>) -> 
 async fn get_artists_by_album(req: HttpRequest, album_id: web::Path<String>) -> impl Responder {
     let (_, response) = when_user::<OutArtistEntityDto>(&req).await;
 
-    if response.is_some() {
-        return response.unwrap();
+    if let Some(resp) = response {
+        return resp;
     }
+
     let db_manager = req.app_data::<Arc<DbManager>>().unwrap();
     ApiResponse::success_response(
         db_manager

@@ -23,9 +23,10 @@ pub(crate) fn register_routes(scope: Scope) -> Scope {
 async fn get_albums(req: HttpRequest) -> impl Responder {
     let (_, response) = when_user::<OutAlbumEntityDto>(&req).await;
 
-    if response.is_some() {
-        return response.unwrap();
+    if let Some(resp) = response {
+        return resp;
     }
+
     let mut paginator = Paginator::try_from(&req).unwrap();
     let db_manager = req.app_data::<Arc<DbManager>>().unwrap();
 
@@ -46,9 +47,10 @@ async fn get_albums(req: HttpRequest) -> impl Responder {
 async fn get_an_album(req: HttpRequest, id: web::Path<String>) -> impl Responder {
     let (_, response) = when_user::<OutAlbumEntityDto>(&req).await;
 
-    if response.is_some() {
-        return response.unwrap();
+    if let Some(resp) = response {
+        return resp;
     }
+
     let db_manager = req.app_data::<Arc<DbManager>>().unwrap();
 
     ApiResponse::into_response(
@@ -64,9 +66,10 @@ async fn get_an_album(req: HttpRequest, id: web::Path<String>) -> impl Responder
 async fn get_albums_by_track(req: HttpRequest, track_id: web::Path<String>) -> impl Responder {
     let (_, response) = when_user::<OutAlbumEntityDto>(&req).await;
 
-    if response.is_some() {
-        return response.unwrap();
+    if let Some(resp) = response {
+        return resp;
     }
+
     let db_manager = req.app_data::<Arc<DbManager>>().unwrap();
 
     ApiResponse::success_response(
@@ -84,8 +87,8 @@ async fn get_albums_by_track(req: HttpRequest, track_id: web::Path<String>) -> i
 async fn get_albums_by_artist(req: HttpRequest, artist_id: web::Path<String>) -> impl Responder {
     let (_, response) = when_user::<OutAlbumEntityDto>(&req).await;
 
-    if response.is_some() {
-        return response.unwrap();
+    if let Some(resp) = response {
+        return resp;
     }
     let db_manager = req.app_data::<Arc<DbManager>>().unwrap();
 
@@ -104,9 +107,10 @@ async fn get_albums_by_artist(req: HttpRequest, artist_id: web::Path<String>) ->
 async fn create(req: HttpRequest, payload: web::Json<InAlbumEntityDto>) -> impl Responder {
     let (_, response) = when_admin::<OutAlbumEntityDto>(&req).await;
 
-    if response.is_some() {
-        return response.unwrap();
+    if let Some(resp) = response {
+        return resp;
     }
+
     let db_manager = req.app_data::<Arc<DbManager>>().unwrap();
 
     ApiResponse::into_response(
@@ -126,9 +130,10 @@ async fn update(
 ) -> impl Responder {
     let (_, response) = when_admin::<OutAlbumEntityDto>(&req).await;
 
-    if response.is_some() {
-        return response.unwrap();
+    if let Some(resp) = response {
+        return resp;
     }
+
     let db_manager = req.app_data::<Arc<DbManager>>().unwrap();
 
     ApiResponse::into_response(
@@ -144,8 +149,8 @@ async fn update(
 async fn delete(req: HttpRequest, id: web::Path<String>) -> impl Responder {
     let (_, response) = when_admin::<OutAlbumEntityDto>(&req).await;
 
-    if response.is_some() {
-        return response.unwrap();
+    if let Some(resp) = response {
+        return resp;
     }
     let db_manager = req.app_data::<Arc<DbManager>>().unwrap();
 
