@@ -231,7 +231,7 @@ impl ClientRepo {
         let mut id = Some(generate_id());
         if let Ok(existing) = std::env::var("PARTY_ADMIN_TOKEN") {
             if existing != "admin_token" {
-                let mut pieces = existing.split("-");
+                let mut pieces = existing.split('-');
                 id = Some(pieces.next().unwrap().to_string());
                 token = Some(pieces.last().unwrap().to_string());
             }
@@ -249,7 +249,7 @@ impl ClientRepo {
             }
         }
 
-        return client;
+        client
     }
 
     pub(crate) async fn create_default_client(&self) -> Option<ClientEntity> {
@@ -264,7 +264,7 @@ impl ClientRepo {
         let mut id = Some(generate_id());
         if let Ok(existing) = std::env::var("PARTY_CLIENT_TOKEN") {
             if existing != "client_token" {
-                let mut pieces = existing.split("-");
+                let mut pieces = existing.split('-');
                 id = Some(pieces.next().unwrap().to_string());
                 token = Some(pieces.last().unwrap().to_string());
             }
@@ -282,7 +282,7 @@ impl ClientRepo {
             }
         }
 
-        return client;
+        client
     }
 
     fn pool(&self) -> &DbConnection {

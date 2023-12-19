@@ -15,7 +15,6 @@ use crate::{
 pub(crate) fn register_routes(scope: Scope) -> Scope {
     scope
         .service(get_tracks)
-        // .service(create_track)
         .service(update_track)
         .service(delete_tracks)
         .service(search)
@@ -29,9 +28,10 @@ pub(crate) fn register_routes(scope: Scope) -> Scope {
 async fn get_tracks(req: HttpRequest) -> impl Responder {
     let (_, response) = when_user::<OutTrackEntityDto>(&req).await;
 
-    if response.is_some() {
-        return response.unwrap();
+    if let Some(err_resp) = response {
+        return err_resp;
     }
+
     let mut paginator = Paginator::try_from(&req).unwrap();
     let db_manager = req.app_data::<Arc<DbManager>>().unwrap();
 
@@ -50,9 +50,10 @@ async fn get_tracks(req: HttpRequest) -> impl Responder {
 async fn get_a_track(id: web::Path<String>, req: HttpRequest) -> impl Responder {
     let (_, response) = when_user::<OutTrackEntityDto>(&req).await;
 
-    if response.is_some() {
-        return response.unwrap();
+    if let Some(err_resp) = response {
+        return err_resp;
     }
+
     let db_manager = req.app_data::<Arc<DbManager>>().unwrap();
     ApiResponse::into_response(
         db_manager
@@ -67,9 +68,10 @@ async fn get_a_track(id: web::Path<String>, req: HttpRequest) -> impl Responder 
 async fn get_tracks_by_album(album_id: web::Path<String>, req: HttpRequest) -> impl Responder {
     let (_, response) = when_user::<OutTrackEntityDto>(&req).await;
 
-    if response.is_some() {
-        return response.unwrap();
+    if let Some(err_resp) = response {
+        return err_resp;
     }
+
     let db_manager = req.app_data::<Arc<DbManager>>().unwrap();
     ApiResponse::success_response(
         db_manager
@@ -89,9 +91,10 @@ async fn get_tracks_by_playlist(
 ) -> impl Responder {
     let (_, response) = when_user::<OutTrackEntityDto>(&req).await;
 
-    if response.is_some() {
-        return response.unwrap();
+    if let Some(err_resp) = response {
+        return err_resp;
     }
+
     let db_manager = req.app_data::<Arc<DbManager>>().unwrap();
     ApiResponse::success_response(
         db_manager
@@ -108,9 +111,10 @@ async fn get_tracks_by_playlist(
 async fn get_tracks_by_artist(req: HttpRequest, artist_id: web::Path<String>) -> impl Responder {
     let (_, response) = when_user::<OutTrackEntityDto>(&req).await;
 
-    if response.is_some() {
-        return response.unwrap();
+    if let Some(err_resp) = response {
+        return err_resp;
     }
+
     let db_manager = req.app_data::<Arc<DbManager>>().unwrap();
     ApiResponse::success_response(
         db_manager
@@ -123,11 +127,6 @@ async fn get_tracks_by_artist(req: HttpRequest, artist_id: web::Path<String>) ->
     )
 }
 
-// #[post("/tracks")]
-// async fn create_track(req: HttpRequest) -> impl Responder {
-//     "creating track"
-// }
-
 #[put("/tracks/{id}")]
 async fn update_track(
     req: HttpRequest,
@@ -136,9 +135,10 @@ async fn update_track(
 ) -> impl Responder {
     let (_, response) = when_admin::<OutTrackEntityDto>(&req).await;
 
-    if response.is_some() {
-        return response.unwrap();
+    if let Some(err_resp) = response {
+        return err_resp;
     }
+
     let db_manager = req.app_data::<Arc<DbManager>>().unwrap();
 
     ApiResponse::into_response(
@@ -154,9 +154,10 @@ async fn update_track(
 async fn delete_tracks(req: HttpRequest, id: web::Path<String>) -> impl Responder {
     let (_, response) = when_admin::<OutTrackEntityDto>(&req).await;
 
-    if response.is_some() {
-        return response.unwrap();
+    if let Some(err_resp) = response {
+        return err_resp;
     }
+
     let db_manager = req.app_data::<Arc<DbManager>>().unwrap();
     ApiResponse::into_response(
         db_manager
@@ -171,8 +172,8 @@ async fn delete_tracks(req: HttpRequest, id: web::Path<String>) -> impl Responde
 async fn search(req: HttpRequest) -> impl Responder {
     let (_, response) = when_user::<OutTrackEntityDto>(&req).await;
 
-    if response.is_some() {
-        return response.unwrap();
+    if let Some(err_resp) = response {
+        return err_resp;
     }
     let db_manager = req.app_data::<Arc<DbManager>>().unwrap();
     let mut keyword = String::new();

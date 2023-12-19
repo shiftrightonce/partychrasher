@@ -39,7 +39,7 @@ PARTY_PHOTO_FORMAT="jpg,png,gif"
 async fn main() {
     let mut attempts = 0;
     while attempts < 5 {
-        if let Err(_) = dotenvy::dotenv() {
+        if dotenvy::dotenv().is_err() {
             if let Err(e) = tokio::fs::write("./.env", DEFAULT_DOTENV).await {
                 eprintln!("could not create .env file: {}", e);
             }

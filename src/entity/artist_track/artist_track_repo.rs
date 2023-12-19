@@ -33,7 +33,7 @@ CREATE TABLE "artist_tracks" (
         if let Err(e) = sqlx::query(sql)
             .bind(&entity.artist_id)
             .bind(&entity.track_id)
-            .bind(&entity.is_feature)
+            .bind(entity.is_feature)
             .bind(&entity.metadata.unwrap_or_default())
             .execute(self.pool())
             .await

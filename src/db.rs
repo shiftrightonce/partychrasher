@@ -95,15 +95,13 @@ impl DbManager {
 
     pub(crate) async fn setup_db(&self) {
         // clients table
-        if self.client_repo().setup_table().await {
-            if !self.client_repo().has_admin().await {
-                if let Some(client) = self.client_repo().create_default_admin().await {
-                    println!("Admin API Token: {}", &client.api_token());
-                }
+        if self.client_repo().setup_table().await && !self.client_repo().has_admin().await {
+            if let Some(client) = self.client_repo().create_default_admin().await {
+                println!("Admin API Token: {}", &client.api_token());
+            }
 
-                if let Some(user) = self.client_repo().create_default_client().await {
-                    println!("User API Token: {}", &user.api_token());
-                }
+            if let Some(user) = self.client_repo().create_default_client().await {
+                println!("User API Token: {}", &user.api_token());
             }
         }
 

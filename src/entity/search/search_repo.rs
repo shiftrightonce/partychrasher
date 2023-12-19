@@ -85,14 +85,12 @@ impl SearchRepo {
 
         // insert hit
         let hit_id = generate_id();
-        if let Ok(_) = sqlx::query(r#"
-        INSERT OR IGNORE INTO "search_hits" ("id", "entity", "entity_id", "metadata") values(?, ?, ?, ?) "#
-      ).bind(&hit_id)
+        if  sqlx::query(r#"INSERT OR IGNORE INTO "search_hits" ("id", "entity", "entity_id", "metadata") values(?, ?, ?, ?) "#).bind(&hit_id)
     .bind(&entity.entity)
     .bind(&entity.entity_id)
     .bind(&entity.metadata_to_string())
     .execute(self.pool())
-    .await {
+    .await.is_ok() {
         for a_search in &search_terms {
           if let Err(e) = sqlx::query(r#"INSERT OR IGNORE INTO "search_pivot" ("search_id", "hit_id") values (?, ?) "#)
             .bind(a_search.internal_id)

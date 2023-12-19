@@ -101,14 +101,14 @@ async fn create_client(req: HttpRequest, payload: web::Json<InClientEntityDto>) 
         ));
     }
 
-    return match db_manager.client_repo().create(payload.into_inner()).await {
+    match db_manager.client_repo().create(payload.into_inner()).await {
         Some(new_client) => HttpResponse::Ok().json(ApiResponse::<OutClientEntityDto>::success(
             OutClientEntityDto::from(new_client),
         )),
         None => HttpResponse::Forbidden().json(ApiResponse::<OutClientEntityDto>::error(
             "Could not create new client. Please review data",
         )),
-    };
+    }
 }
 
 #[put("/clients/{id}")]
@@ -139,7 +139,7 @@ async fn update_client(
         }
     }
 
-    return match db_manager
+    match db_manager
         .client_repo()
         .update(&to_update_id, payload.into_inner())
         .await
@@ -150,7 +150,7 @@ async fn update_client(
         None => HttpResponse::Forbidden().json(ApiResponse::<OutClientEntityDto>::error(
             "Could not create new client. Please review data",
         )),
-    };
+    }
 }
 
 #[delete("/clients/{id}")]

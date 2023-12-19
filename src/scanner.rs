@@ -241,8 +241,7 @@ async fn lofty_tag_processor(
                     // Transforms `Cover Art (Other)` to `cover_art_other`
                     let pict_type_name = media_type
                         .unwrap()
-                        .replace('(', "")
-                        .replace(')', "")
+                        .replace(['(', ')'], "")
                         .replace(' ', "_")
                         .to_lowercase();
 

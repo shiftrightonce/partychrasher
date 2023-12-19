@@ -36,7 +36,7 @@ impl<D: serde::Serialize> ApiResponse<D> {
         }
     }
 
-    pub(crate) fn to_json(self) -> serde_json::Value {
+    pub(crate) fn to_json(&self) -> serde_json::Value {
         serde_json::to_value(self).unwrap()
     }
 
@@ -49,8 +49,8 @@ impl<D: serde::Serialize> ApiResponse<D> {
     }
 
     pub(crate) fn into_response(data: Option<D>) -> HttpResponse {
-        if data.is_some() {
-            Self::success_response(data.unwrap())
+        if let Some(d) = data {
+            Self::success_response(d)
         } else {
             Self::not_found_response(None)
         }
