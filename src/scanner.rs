@@ -7,12 +7,13 @@ use crate::{
     config::Config,
     db::DbManager,
     entity::{
-        album::{AlbumMetadata, InAlbumEntityDto},
+        album::{AlbumEntity, AlbumMetadata, InAlbumEntityDto},
         album_artist::InAlbumArtistEntityDto,
         album_track::InAlbumTrackEntityDto,
         artist::{ArtistEntity, InArtistEntityDto},
         artist_track::InArtistTrackEntityDto,
         media::{InMediaEntityDto, MediaEntity, MediaMetadata, MediaType},
+        search::InSearchHitEntityDto,
         track::TrackEntity,
     },
 };
@@ -70,6 +71,7 @@ async fn process_entry(entry: DirEntry, db_manager: &DbManager, config: &Config)
                             db_manager,
                         )
                         .await;
+                        add_track_to_search(add_track_result.0.as_ref().unwrap(), db_manager).await;
                     }
                 }
             }
@@ -115,6 +117,8 @@ async fn add_track(
                                 metadata: None,
                             })
                             .await;
+                        add_artist_to_search(&artist, db_manager).await;
+
                         artists.push(artist)
                     }
                 }
@@ -172,8 +176,31 @@ async fn add_album(
                         .await;
                 }
             }
+
+            add_album_to_search(&album, db_manager).await;
         }
     }
+}
+
+async fn add_track_to_search(track: &TrackEntity, db_manager: &DbManager) {
+    _ = db_manager
+        .search_repo()
+        .create(InSearchHitEntityDto::from(track))
+        .await;
+}
+
+async fn add_album_to_search(album: &AlbumEntity, db_manager: &DbManager) {
+    _ = db_manager
+        .search_repo()
+        .create(InSearchHitEntityDto::from(album))
+        .await;
+}
+
+async fn add_artist_to_search(artist: &ArtistEntity, db_manager: &DbManager) {
+    _ = db_manager
+        .search_repo()
+        .create(InSearchHitEntityDto::from(artist))
+        .await;
 }
 
 async fn lofty_tag_processor(
