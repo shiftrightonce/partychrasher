@@ -79,7 +79,7 @@ pub(crate) async fn start_webapp(
             .route("/cmd", web::post().to(command))
             .route("/ws", web::get().to(websocket::handle_websocket))
     })
-    .bind(("0.0.0.0", 8080))
+    .bind((config.http_host(), config.http_port()))
     .expect("could not bind to port: 8080")
     .run()
     .await;
