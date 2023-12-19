@@ -1,5 +1,3 @@
-use std::fmt::format;
-
 use futures::stream::TryStreamExt;
 use sqlx::sqlite::SqliteRow;
 use sqlx::Row;
