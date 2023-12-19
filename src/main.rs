@@ -128,4 +128,5 @@ enum Commands {
 async fn create_db_folder() {
     _ = tokio::fs::create_dir_all("./db").await;
     _ = tokio::fs::create_dir_all("./static").await;
+    _ = tokio::fs::create_dir_all("./static/artwork").await;
 }
