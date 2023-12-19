@@ -1,9 +1,193 @@
+use serde_json::Map;
+use sqlx::{Column, Row};
+
+use crate::entity::{album::AlbumEntity, artist::ArtistEntity, track::TrackEntity, FromSqliteRow};
+
 pub(crate) struct SearchHitEntity {
-    entity: String,
+    internal_id: i64,
     id: String,
-    metadata: serde_json::Value,
+    entity: String,
+    entity_id: String,
+    metadata: Map<String, serde_json::Value>,
 }
+
+#[derive(Debug, Default)]
+pub(crate) struct InSearchHitEntityDto {
+    pub(crate) keywords: Vec<String>,
+    pub(crate) entity: String,
+    pub(crate) entity_id: String,
+    pub(crate) metadata: Map<String, serde_json::Value>,
+}
+
+impl InSearchHitEntityDto {
+    pub(crate) fn metadata_from_string(&mut self, metadata: &str) {
+        if let Ok(json) = serde_json::from_str(metadata) {
+            self.metadata = json;
+        }
+    }
+
+    pub(crate) fn metadata_to_string(&self) -> String {
+        serde_json::to_string(&self.metadata).unwrap()
+    }
+}
+
+impl Default for SearchHitEntity {
+    fn default() -> Self {
+        Self {
+            internal_id: 0,
+            id: String::new(),
+            entity: String::new(),
+            entity_id: String::new(),
+            metadata: Map::new(),
+        }
+    }
+}
+
+impl FromSqliteRow for SearchHitEntity {
+    fn from_row(row: sqlx::sqlite::SqliteRow) -> Option<Self>
+    where
+        Self: Sized,
+    {
+        let mut entity = Self::default();
+        for column in row.columns() {
+            match column.name() {
+                "internal_id" => entity.internal_id = row.get(column.name()),
+                "id" => entity.id = row.get(column.name()),
+                "entity" => entity.entity = row.get(column.name()),
+                "entity_id" => entity.entity_id = row.get(column.name()),
+                "metadata" => {
+                    let value: String = row.get(column.name());
+                    if let Ok(json) = serde_json::from_str(&value) {
+                        entity.metadata = json;
+                    }
+                }
+                _ => panic!(
+                    "New field added to the search hits table: {}",
+                    column.name()
+                ),
+            }
+        }
+
+        if entity.internal_id > 0 {
+            Some(entity)
+        } else {
+            None
+        }
+    }
+}
+
+#[derive(Debug, Default, serde::Serialize)]
+pub(crate) struct OutSearchHitEntityDto {
+    id: String,
+    entity: String,
+    entity_id: String,
+    metadata: Map<String, serde_json::Value>,
+}
+
+impl From<SearchHitEntity> for OutSearchHitEntityDto {
+    fn from(entity: SearchHitEntity) -> Self {
+        Self {
+            id: entity.id,
+            entity: entity.entity,
+            entity_id: entity.entity_id,
+            metadata: entity.metadata,
+        }
+    }
+}
+
+pub(crate) struct SearchPivotEntity {
+    hit_id: String,
+    search_id: String,
+}
+
+#[derive(Debug, Default, serde::Serialize, serde::Deserialize)]
 pub(crate) struct SearchEntity {
-    pub(crate) keyword: String,
-    pub(crate) hits: String,
+    pub(crate) internal_id: i64,
+    pub(crate) term: String,
+}
+
+impl FromSqliteRow for SearchEntity {
+    fn from_row(row: sqlx::sqlite::SqliteRow) -> Option<Self>
+    where
+        Self: Sized,
+    {
+        let mut search = Self::default();
+        for column in row.columns() {
+            match column.name() {
+                "internal_id" => search.internal_id = row.get(column.name()),
+                "term" => search.term = row.get(column.name()),
+                _ => (),
+            }
+        }
+
+        if search.term.is_empty() {
+            None
+        } else {
+            Some(search)
+        }
+    }
+}
+
+impl From<&TrackEntity> for InSearchHitEntityDto {
+    fn from(track: &TrackEntity) -> Self {
+        let mut keywords = Vec::new();
+        keywords.push(track.title.clone());
+        if !track.metadata.genre.is_empty() {
+            keywords.push(track.metadata.genre.clone());
+        }
+
+        let mut metadata = Map::new();
+
+        metadata.insert("title".to_string(), track.title.clone().into());
+        metadata.insert(
+            "entity_metadata".to_string(),
+            serde_json::to_value(track.metadata.clone()).unwrap(),
+        );
+        Self {
+            keywords,
+            entity: "track".to_string(),
+            entity_id: track.id.clone(),
+            metadata,
+        }
+    }
+}
+
+impl From<&AlbumEntity> for InSearchHitEntityDto {
+    fn from(album: &AlbumEntity) -> Self {
+        let mut keywords = Vec::new();
+        keywords.push(album.title.clone());
+
+        let mut metadata = Map::new();
+        metadata.insert("title".to_string(), album.title.clone().into());
+        metadata.insert(
+            "entity_metadata".to_string(),
+            serde_json::to_value(album.metadata.clone()).unwrap(),
+        );
+        Self {
+            keywords,
+            entity: "album".to_string(),
+            entity_id: album.id.clone(),
+            metadata,
+        }
+    }
+}
+
+impl From<&ArtistEntity> for InSearchHitEntityDto {
+    fn from(artist: &ArtistEntity) -> Self {
+        let mut keywords = Vec::new();
+        keywords.push(artist.name.clone());
+
+        let mut metadata = Map::new();
+        metadata.insert("name".to_string(), artist.name.clone().into());
+        metadata.insert(
+            "entity_metadata".to_string(),
+            artist.metadata.clone().into(),
+        );
+        Self {
+            keywords,
+            entity: "artist".to_string(),
+            entity_id: artist.id.clone(),
+            metadata,
+        }
+    }
 }
