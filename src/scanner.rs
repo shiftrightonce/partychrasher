@@ -6,7 +6,7 @@ use tokio::fs::DirEntry;
 use crate::{
     db::DbManager,
     entity::{
-        album::InAlbumEntityDto,
+        album::{AlbumMetadata, InAlbumEntityDto},
         album_artist::InAlbumArtistEntityDto,
         album_track::InAlbumTrackEntityDto,
         artist::{ArtistEntity, InArtistEntityDto},
@@ -140,7 +140,12 @@ async fn add_album(
             .album_repo()
             .create(InAlbumEntityDto {
                 title: media.metadata.album.clone(),
-                metadata: None,
+                year: if media.metadata.year > 0 {
+                    Some(media.metadata.year)
+                } else {
+                    None
+                },
+                metadata: Some(AlbumMetadata::from(&track.metadata)),
             })
             .await
         {
