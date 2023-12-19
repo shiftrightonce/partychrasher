@@ -11,7 +11,8 @@ use crate::{
     entity::{
         album::AlbumRepo, album_artist::AlbumArtistRepo, album_track::AlbumTrackRepo,
         artist::ArtistRepo, artist_track::ArtistTrackRepo, client::ClientRepo, media::MediaRepo,
-        playlist::PlaylistRepo, playlist_tracks::PlaylistTracksRepo, track::TrackRepo,
+        playlist::PlaylistRepo, playlist_tracks::PlaylistTracksRepo, search::SearchRepo,
+        track::TrackRepo,
     },
     helper::{base64_decode_to_string, base64_encode},
 };
@@ -88,6 +89,10 @@ impl DbManager {
         MediaRepo::new(self.pool.clone())
     }
 
+    pub(crate) fn search_repo(&self) -> SearchRepo {
+        SearchRepo::new(self.pool.clone())
+    }
+
     pub(crate) async fn setup_db(&self) {
         // clients table
         if self.client_repo().setup_table().await {
@@ -129,6 +134,9 @@ impl DbManager {
 
         // media table
         self.media_repo().setup_table().await;
+
+        // search tables
+        self.search_repo().setup_table().await;
     }
 }
 
