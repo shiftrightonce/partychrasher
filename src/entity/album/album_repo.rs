@@ -28,7 +28,7 @@ impl AlbumRepo {
         let sql = r#"CREATE TABLE "albums" (
 	"internal_id"	INTEGER,
 	"id"	TEXT NOT NULL UNIQUE,
-	"title"	TEXT,
+	"title"	TEXT UNIQUE,
 	"metadata"	TEXT,
 	PRIMARY KEY("internal_id" AUTOINCREMENT)
 );"#;
@@ -37,7 +37,7 @@ impl AlbumRepo {
     }
 
     pub(crate) async fn create(&self, album: InAlbumEntityDto) -> Option<AlbumEntity> {
-        let sql = "INSERT INTO albums (id, title, metadata) values (?, ?, ?)";
+        let sql = "INSERT OR IGNORE INTO albums (id, title, metadata) values (?, ?, ?)";
 
         let id = Ulid::new().to_string().to_lowercase();
 
