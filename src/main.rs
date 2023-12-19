@@ -40,7 +40,9 @@ async fn main() {
     let mut attempts = 0;
     while attempts < 5 {
         if let Err(_) = dotenvy::dotenv() {
-            _ = tokio::fs::write("./.env", DEFAULT_DOTENV).await;
+            if let Err(e) = tokio::fs::write("./.env", DEFAULT_DOTENV).await {
+                eprintln!("could not create .env file: {}", e);
+            }
             attempts += 1;
         } else {
             break;
