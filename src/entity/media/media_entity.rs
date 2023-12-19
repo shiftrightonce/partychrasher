@@ -1,9 +1,11 @@
+use std::collections::HashMap;
+
 use actix_web::body::BoxBody;
 use actix_web::http::header::ContentType;
 use actix_web::{HttpResponse, Responder};
+use lofty::{Accessor, Tag, TaggedFileExt};
 use sqlx::Column;
 use sqlx::Row;
-use symphonia::core::meta::Tag;
 
 use crate::entity::track::{InTrackEntityDto, TrackMetadata};
 use crate::entity::FromSqliteRow;
@@ -85,6 +87,26 @@ impl TryInto<InTrackEntityDto> for MediaEntity {
     }
 }
 
+impl TryFrom<&MediaEntity> for InTrackEntityDto {
+    type Error = String;
+    fn try_from(value: &MediaEntity) -> Result<Self, Self::Error> {
+        if value.is_audio() {
+            let title = if value.metadata.title.is_empty() {
+                value.filename.clone()
+            } else {
+                value.metadata.title.clone()
+            };
+            Ok(Self::new(
+                &title,
+                Some(value.id.clone()),
+                Some(TrackMetadata::from(&value.metadata)),
+            ))
+        } else {
+            Err("media file is not an audio file".to_string())
+        }
+    }
+}
+
 #[derive(Debug, serde::Deserialize)]
 pub(crate) struct InMediaEntityDto {
     pub(crate) filename: String,
@@ -149,37 +171,37 @@ pub(crate) struct MediaMetadata {
     pub(crate) artist: String,
     pub(crate) album: String,
     pub(crate) genre: String,
-    pub(crate) track_number: String,
+    pub(crate) track: u32,
+    pub(crate) disk: u32,
+    pub(crate) year: u32,
+    pub(crate) pictures: HashMap<String, String>,
 }
 
-impl From<&[Tag]> for MediaMetadata {
-    fn from(tags: &[Tag]) -> Self {
+impl From<&Tag> for MediaMetadata {
+    fn from(tag: &Tag) -> Self {
         let mut metadata = Self::default();
-
-        for a_tag in tags.iter() {
-            let key = if let Some(k) = a_tag.std_key {
-                format!("{:?}", k).to_lowercase()
-            } else {
-                if a_tag.key.len() > 26 {
-                    a_tag.key.to_lowercase().split_at(26).0.to_string()
-                } else {
-                    a_tag.key.to_lowercase().clone()
-                }
-            };
-
-            if key.contains("priv:") {
-                continue;
-            }
-            match key.as_str() {
-                "title" | "tracktitle" => metadata.title = a_tag.value.to_string(),
-                "album" => metadata.album = a_tag.value.to_string(),
-                "artist" => metadata.artist = a_tag.value.to_string(),
-                "genre" => metadata.genre = a_tag.value.to_string(),
-                "tracknumber" => metadata.track_number = a_tag.value.to_string(),
-                _ => (),
-            }
+        if let Some(title) = tag.title() {
+            metadata.title = title.to_string();
+        }
+        if let Some(artist) = tag.artist() {
+            metadata.artist = artist.to_string();
+        }
+        if let Some(album) = tag.album() {
+            metadata.album = album.to_string();
+        }
+        if let Some(track) = tag.track() {
+            metadata.track = track;
+        }
+        if let Some(disk) = tag.disk() {
+            metadata.disk = disk;
+        }
+        if let Some(year) = tag.year() {
+            metadata.year = year;
         }
 
+        if let Some(genre) = tag.genre() {
+            metadata.genre = genre.to_string();
+        }
         metadata
     }
 }
