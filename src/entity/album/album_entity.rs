@@ -9,7 +9,7 @@ use sqlx::Row;
 use crate::entity::track::TrackMetadata;
 use crate::entity::FromSqliteRow;
 
-#[derive(Debug, Default, serde::Deserialize, serde::Serialize)]
+#[derive(Debug, Default, Clone, serde::Deserialize, serde::Serialize)]
 pub(crate) struct AlbumMetadata {
     pictures: HashMap<String, String>,
 }
