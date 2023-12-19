@@ -1894,6 +1894,7 @@ dependencies = [
  "base64",
  "clap",
  "cpal",
+ "dotenvy",
  "futures",
  "futures-util",
  "lazy_static",

@@ -1,6 +1,6 @@
 use std::{collections::HashMap, fmt::Display, str::FromStr, sync::Arc, time::Duration};
 
-use actix_web::{body::BoxBody, web::Query, HttpRequest, HttpResponse, Responder};
+use actix_web::{web::Query, HttpRequest, HttpResponse};
 use sqlx::{
     sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePoolOptions},
     SqlitePool,
@@ -9,16 +9,9 @@ use sqlx::{
 use crate::{
     config::Config,
     entity::{
-        album::AlbumRepo,
-        album_artist::AlbumArtistRepo,
-        album_track::AlbumTrackRepo,
-        artist::ArtistRepo,
-        artist_track::ArtistTrackRepo,
-        client::{ClientEntity, ClientRepo},
-        media::MediaRepo,
-        playlist::PlaylistRepo,
-        playlist_tracks::PlaylistTracksRepo,
-        track::TrackRepo,
+        album::AlbumRepo, album_artist::AlbumArtistRepo, album_track::AlbumTrackRepo,
+        artist::ArtistRepo, artist_track::ArtistTrackRepo, client::ClientRepo, media::MediaRepo,
+        playlist::PlaylistRepo, playlist_tracks::PlaylistTracksRepo, track::TrackRepo,
     },
     helper::{base64_decode_to_string, base64_encode},
 };
@@ -26,7 +19,8 @@ use crate::{
 pub(crate) type DbConnection = SqlitePool;
 
 pub(crate) async fn setup_db_connection(config: &Config) -> Arc<DbManager> {
-    let option = SqliteConnectOptions::from_str(&config.db_path())
+    let db = format!("{}/data.db", &config.db_path());
+    let option = SqliteConnectOptions::from_str(&db)
         .unwrap()
         .foreign_keys(true)
         .create_if_missing(true)
@@ -96,15 +90,15 @@ impl DbManager {
 
     pub(crate) async fn setup_db(&self) {
         // clients table
-        if let Some(client) = self.client_repo().setup_table().await {
-            println!("Admin API Token: {}", &client.api_token());
+        if self.client_repo().setup_table().await {
+            if !self.client_repo().has_admin().await {
+                if let Some(client) = self.client_repo().create_default_admin().await {
+                    println!("Admin API Token: {}", &client.api_token());
+                }
 
-            if let Some(user) = self
-                .client_repo()
-                .create(ClientEntity::default_user().into())
-                .await
-            {
-                println!("User API Token: {}", &user.api_token());
+                if let Some(user) = self.client_repo().create_default_client().await {
+                    println!("User API Token: {}", &user.api_token());
+                }
             }
         }
 

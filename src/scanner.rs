@@ -4,6 +4,7 @@ use std::path::PathBuf;
 use tokio::fs::DirEntry;
 
 use crate::{
+    config::Config,
     db::DbManager,
     entity::{
         album::{AlbumMetadata, InAlbumEntityDto},
@@ -16,22 +17,22 @@ use crate::{
     },
 };
 
-pub(crate) async fn scan(path: String, db_manager: &DbManager) {
+pub(crate) async fn scan(path: String, db_manager: &DbManager, config: &Config) {
     println!("we are about to scan this path: {:?}", path);
-    walk_dir(path.into(), db_manager).await
+    walk_dir(path.into(), db_manager, config).await
 }
 
 #[async_recursion(?Send)]
-async fn walk_dir(path: PathBuf, db_manager: &DbManager) {
+async fn walk_dir(path: PathBuf, db_manager: &DbManager, config: &Config) {
     match tokio::fs::read_dir(path).await {
         Ok(mut entries) => {
             while let Ok(Some(an_entry)) = entries.next_entry().await {
                 let metadata = an_entry.metadata().await.unwrap();
                 if metadata.is_dir() {
                     println!("read directory: {:?} ", an_entry.path());
-                    walk_dir(an_entry.path(), db_manager).await
+                    walk_dir(an_entry.path(), db_manager, config).await
                 } else {
-                    process_entry(an_entry, db_manager).await;
+                    process_entry(an_entry, db_manager, config).await;
                 }
             }
         }
@@ -39,16 +40,15 @@ async fn walk_dir(path: PathBuf, db_manager: &DbManager) {
     }
 }
 
-async fn process_entry(entry: DirEntry, db_manager: &DbManager) {
-    // TODO: This should come from the configuration
-    let exts = ["mp3", "aac", "m4a", "wav", "ogg", "wma", "webm", "flac"];
+async fn process_entry(entry: DirEntry, db_manager: &DbManager, config: &Config) {
+    let exts = config.audio_format();
 
     if let Some(ext) = entry.path().extension() {
         if exts.contains(&ext.to_str().unwrap()) {
             let path = entry.path();
             println!("processing file: {:?}", entry.file_name());
 
-            let media_metadata = lofty_tag_processor(&path, db_manager).await;
+            let media_metadata = lofty_tag_processor(&path, db_manager, config).await;
 
             if let Some(the_media) = db_manager
                 .media_repo()
@@ -176,7 +176,11 @@ async fn add_album(
     }
 }
 
-async fn lofty_tag_processor(path: &PathBuf, db_manager: &DbManager) -> MediaMetadata {
+async fn lofty_tag_processor(
+    path: &PathBuf,
+    db_manager: &DbManager,
+    config: &Config,
+) -> MediaMetadata {
     use lofty::{Probe, TaggedFileExt};
     let mut metadata = MediaMetadata::default();
 
@@ -203,8 +207,7 @@ async fn lofty_tag_processor(path: &PathBuf, db_manager: &DbManager) -> MediaMet
                 let pic_type = a_picture.pic_type();
                 let media_type = pic_type.as_ape_key();
                 if !extension.is_empty() && media_type.is_some() {
-                    // TODO: This value should come from a configuration
-                    let dir = "./static/artwork";
+                    let dir = config.artwork_path();
                     let filename = format!("{}{}", sha256::digest(&metadata.album), extension);
                     let path = format!("{}/{}", dir, filename);
 

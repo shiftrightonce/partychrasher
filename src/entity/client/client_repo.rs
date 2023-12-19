@@ -20,7 +20,7 @@ impl ClientRepo {
         Self { pool }
     }
 
-    pub(crate) async fn setup_table(&self) -> Option<ClientEntity> {
+    pub(crate) async fn setup_table(&self) -> bool {
         let sql = r#" CREATE TABLE IF NOT EXISTS "clients" (
 	"internal_id"	INTEGER,
 	"id"	TEXT NOT NULL UNIQUE,
@@ -31,27 +31,12 @@ impl ClientRepo {
 );
 "#;
 
-        if sqlx::query(sql).execute(self.pool()).await.is_ok() && !self.has_admin().await {
-            return self.create(ClientEntity::default_admin().into()).await;
-        }
-        None
+        sqlx::query(sql).execute(self.pool()).await.is_ok()
     }
 
     pub(crate) async fn create(&self, client: InClientEntityDto) -> Option<ClientEntity> {
-        let api_secret = self.generate_token();
-        match sqlx::query(
-            r#"INSERT INTO "clients"("id","name","api_secret","role") VALUES (?,?,?,?);"#,
-        )
-        .bind(generate_id())
-        .bind(client.name.unwrap_or(generate_id()))
-        .bind(api_secret)
-        .bind(client.role.unwrap_or_default().to_string())
-        .execute(self.pool())
-        .await
-        {
-            Ok(result) => self.find_by_internal_id(result.last_insert_rowid()).await,
-            _ => None,
-        }
+        self.do_insert(client, Some(self.generate_token()), None)
+            .await
     }
 
     pub(crate) async fn update(&self, id: &str, client: InClientEntityDto) -> Option<ClientEntity> {
@@ -209,6 +194,95 @@ impl ClientRepo {
 
     pub(crate) async fn has_admin(&self) -> bool {
         self.count_by_role(Role::Admin).await > 0
+    }
+
+    pub(crate) async fn do_insert(
+        &self,
+        client: InClientEntityDto,
+        token: Option<String>,
+        id: Option<String>,
+    ) -> Option<ClientEntity> {
+        let api_secret = token.unwrap_or(self.generate_token());
+        let entity_id = id.unwrap_or(generate_id());
+        match sqlx::query(
+            r#"INSERT INTO "clients"("id","name","api_secret","role") VALUES (?,?,?,?);"#,
+        )
+        .bind(entity_id)
+        .bind(client.name.unwrap_or(generate_id()))
+        .bind(api_secret)
+        .bind(client.role.unwrap_or_default().to_string())
+        .execute(self.pool())
+        .await
+        {
+            Ok(result) => self.find_by_internal_id(result.last_insert_rowid()).await,
+            _ => None,
+        }
+    }
+
+    pub(crate) async fn create_default_admin(&self) -> Option<ClientEntity> {
+        if let Ok(id) = std::env::var("PARTY_ADMIN_ID") {
+            let result = self.find_by_id(&id).await;
+            if result.is_some() {
+                return result;
+            }
+        }
+
+        let mut token = Some(self.generate_token());
+        let mut id = Some(generate_id());
+        if let Ok(existing) = std::env::var("PARTY_ADMIN_TOKEN") {
+            if existing != "admin_token" {
+                let mut pieces = existing.split("-");
+                id = Some(pieces.next().unwrap().to_string());
+                token = Some(pieces.last().unwrap().to_string());
+            }
+        }
+        let client = self
+            .do_insert(ClientEntity::default_admin().into(), token, id)
+            .await;
+
+        if client.is_some() {
+            if let Ok(mut content) = tokio::fs::read_to_string("./.env").await {
+                content = content
+                    .replace("admin_token", &client.as_ref().unwrap().api_token())
+                    .replace("admin_id", &client.as_ref().unwrap().id);
+                _ = tokio::fs::write("./.env", content).await;
+            }
+        }
+
+        return client;
+    }
+
+    pub(crate) async fn create_default_client(&self) -> Option<ClientEntity> {
+        if let Ok(id) = std::env::var("PARTY_CLIENT_ID") {
+            let result = self.find_by_id(&id).await;
+            if result.is_some() {
+                return result;
+            }
+        }
+
+        let mut token = Some(self.generate_token());
+        let mut id = Some(generate_id());
+        if let Ok(existing) = std::env::var("PARTY_CLIENT_TOKEN") {
+            if existing != "client_token" {
+                let mut pieces = existing.split("-");
+                id = Some(pieces.next().unwrap().to_string());
+                token = Some(pieces.last().unwrap().to_string());
+            }
+        }
+        let client = self
+            .do_insert(ClientEntity::default_admin().into(), token, id)
+            .await;
+
+        if client.is_some() {
+            if let Ok(mut content) = tokio::fs::read_to_string("./.env").await {
+                content = content
+                    .replace("client_token", &client.as_ref().unwrap().api_token())
+                    .replace("client_id", &client.as_ref().unwrap().id);
+                _ = tokio::fs::write("./.env", content).await;
+            }
+        }
+
+        return client;
     }
 
     fn pool(&self) -> &DbConnection {

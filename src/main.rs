@@ -1,5 +1,5 @@
 use clap::{Parser, Subcommand};
-use config::ConfigBuilder;
+use config::{Config, ConfigBuilder};
 use db::setup_db_connection;
 use thread_channels::setup_threads;
 
@@ -20,8 +20,32 @@ mod websocket;
 #[cfg(not(target_os = "linux"))]
 mod resampler;
 
+const DEFAULT_DOTENV: &str = r#"
+PARTY_ADMIN_ID="admin_id"
+PARTY_ADMIN_TOKEN="admin_token"
+PARTY_CLIENT_ID="client_id"
+PARTY_CLIENT_TOKEN="client_token"
+PARTY_DEFAULT_PLAYLIST="playlist_id"
+PARTY_HTTP_HOST=127.0.0.1
+PARTY_HTTP_PORT=8080
+PARTY_DB_LOCATION="./db/data.db"
+PARTY_STATIC_LOCATION="./static"
+PARTY_AUDIO_FORMAT="mp3,aac,m4a,wav,ogg,wma,webm,flac"
+PARTY_VIDEO_FORMAT="mp4"
+PARTY_PHOTO_FORMAT="jpg,png,gif"
+"#;
+
 #[actix_web::main]
 async fn main() {
+    let mut attempts = 0;
+    while attempts < 5 {
+        if let Err(_) = dotenvy::dotenv() {
+            _ = tokio::fs::write("./.env", DEFAULT_DOTENV).await;
+            attempts += 1;
+        } else {
+            break;
+        }
+    }
     pretty_env_logger::init();
     let mut config_builder = ConfigBuilder::new();
     let cli = Cli::parse();
@@ -29,8 +53,6 @@ async fn main() {
     let mut scanning = false;
     let mut path_to_scan = String::new();
     let mut seed_total = 0;
-
-    create_db_folder().await;
 
     match cli.command {
         Some(cmd) => match cmd {
@@ -72,6 +94,8 @@ async fn main() {
 
     let app_config = config_builder.build();
 
+    create_db_folder(&app_config).await;
+
     let db_manager = setup_db_connection(&app_config).await;
 
     // Setup database
@@ -99,7 +123,7 @@ async fn main() {
     } else if seeding {
         seeder::run_seeders(&db_manager, seed_total).await;
     } else if scanning {
-        scanner::scan(path_to_scan, &db_manager).await;
+        scanner::scan(path_to_scan, &db_manager, &app_config).await;
     }
 }
 
@@ -125,8 +149,8 @@ enum Commands {
     },
 }
 
-async fn create_db_folder() {
-    _ = tokio::fs::create_dir_all("./db").await;
-    _ = tokio::fs::create_dir_all("./static").await;
-    _ = tokio::fs::create_dir_all("./static/artwork").await;
+async fn create_db_folder(config: &Config) {
+    _ = tokio::fs::create_dir_all(config.db_path()).await;
+    _ = tokio::fs::create_dir_all(config.static_path()).await;
+    _ = tokio::fs::create_dir_all(config.artwork_path()).await;
 }

@@ -9,6 +9,7 @@ pub(crate) mod client;
 pub(crate) mod media;
 pub(crate) mod playlist;
 pub(crate) mod playlist_tracks;
+pub(crate) mod search;
 pub(crate) mod track;
 
 use sqlx::sqlite::SqliteRow;
