@@ -356,6 +356,8 @@ fn play_track(
                 // Write the decoded audio samples to the audio output if the presentation timestamp
                 // for the packet is >= the seeked position (0 if not seeking).
                 if packet.ts() >= play_opts.seek_ts {
+                    print_progress(packet.ts(), dur, tb, sync_sender);
+
                     if let Some(audio_output) = audio_output {
                         audio_output.write(decoded).unwrap()
                     }
