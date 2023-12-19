@@ -53,7 +53,7 @@ impl From<TrackEntity> for InTrackEntityDto {
     }
 }
 
-#[derive(Debug, Default, serde::Deserialize, serde::Serialize)]
+#[derive(Debug, Default, Clone, serde::Deserialize, serde::Serialize)]
 pub(crate) struct TrackMetadata {
     pub(crate) title: String,
     pub(crate) artist: String,
