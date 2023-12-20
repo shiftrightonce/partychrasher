@@ -32,7 +32,7 @@ CREATE TABLE "playlist_tracks" (
         &self,
         entity: InPlaylistTrackEntityDto,
     ) -> Option<PlaylistTrackEntity> {
-        let sql = "INSERT INTO playlist_tracks (playlist_id, track_id, metatdata) values (?, ?, ?)";
+        let sql = "INSERT INTO playlist_tracks (playlist_id, track_id, metadata) values (?, ?, ?)";
         if let Err(e) = sqlx::query(sql)
             .bind(&entity.playlist_id)
             .bind(&entity.track_id)
