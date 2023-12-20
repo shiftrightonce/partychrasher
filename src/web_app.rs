@@ -1,6 +1,10 @@
 use actix::*;
 use std::sync::{atomic::AtomicUsize, Arc};
 
+use include_dir::{include_dir, Dir};
+
+static UI_EMBEDDED_ASSETS: Dir = include_dir!("./ui/app/dist/spa");
+
 use crate::{
     config::Config,
     db::DbManager,
@@ -10,8 +14,9 @@ use crate::{
     websocket::{self, server},
 };
 use actix_web::{
+    get,
     web::{self, Data},
-    App, HttpRequest, HttpResponse, HttpServer,
+    App, HttpRequest, HttpResponse, HttpServer, Responder,
 };
 
 use self::{
@@ -61,7 +66,9 @@ pub(crate) async fn start_webapp(
             .app_data(Data::new(server.clone()))
             .app_data(the_app_config.clone())
             .app_data(db_manager.clone())
-            .service(actix_files::Files::new("/assets", "./static"))
+            // .service(actix_files::Files::new("/assets", "./static"))
+            .service(home)
+            .service(assets)
             .route("/dev-docs", web::get().to(dev_docs_index_handler))
             // RESTFUL API version 1
             .configure(api::v1::config_api_service)
@@ -196,5 +203,37 @@ async fn command(
             "handled resume command"
         }
         _ => "nothing to do",
+    }
+}
+
+#[get("/")]
+async fn home() -> impl Responder {
+    if let Some(file) = UI_EMBEDDED_ASSETS.get_file("index.html") {
+        HttpResponse::Ok().body(file.contents_utf8().unwrap())
+    } else {
+        HttpResponse::ServiceUnavailable().body("Web application not built")
+    }
+}
+
+#[get("/_ui/{tail:.*}")]
+async fn assets(path: web::Path<String>) -> impl Responder {
+    log::info!("serving: {}", &path.as_str());
+    if let Some(file) = UI_EMBEDDED_ASSETS.get_file(path.as_str()) {
+        let mut response = HttpResponse::Ok();
+        let path_str = path.as_str();
+        if path_str.ends_with(".js") {
+            response.content_type("text/javascript");
+            return response.body(file.contents_utf8().unwrap());
+        } else if path_str.ends_with(".css") {
+            response.content_type("text/css");
+            return response.body(file.contents_utf8().unwrap());
+        } else if path_str.ends_with(".woff2") {
+            response.content_type("font/woff2");
+        } else if path_str.ends_with(".woff") {
+            response.content_type("font/woff");
+        }
+        response.body(file.contents())
+    } else {
+        HttpResponse::NotFound().body(format!("'{}' not found", path.as_str()))
     }
 }
