@@ -17,12 +17,15 @@ pub(crate) fn register_routes(scope: Scope) -> Scope {
     scope
         .service(get_clients)
         .service(get_me)
-        .service(authenticate)
         .service(get_a_client)
         .service(create_client)
         .service(update_client)
         .service(delete_client)
         .service(reset_token)
+}
+
+pub(crate) fn register_open_routes(scope: Scope) -> Scope {
+    scope.service(authenticate)
 }
 
 #[get("/clients")]
@@ -199,13 +202,10 @@ async fn reset_token(id: web::Path<String>, req: HttpRequest) -> impl Responder 
 }
 
 #[get("/clients/auth/{id}")]
-async fn authenticate(req: HttpRequest, login_token: web::Path<String>) -> impl Responder {
-    let (_, response) = when_user::<ClientEntity>(&req).await;
-
-    if let Some(resp) = response {
-        return resp;
-    }
-
+pub(crate) async fn authenticate(
+    req: HttpRequest,
+    login_token: web::Path<String>,
+) -> impl Responder {
     let db_manager = req.app_data::<Arc<DbManager>>().unwrap();
 
     if let Some(client) = db_manager
@@ -213,7 +213,12 @@ async fn authenticate(req: HttpRequest, login_token: web::Path<String>) -> impl 
         .find_by_login_token(login_token.as_str())
         .await
     {
-        let cookie = Cookie::new("_token", client.api_token());
+        let mut cookie = Cookie::new("_party_t", client.api_token());
+        cookie.set_same_site(Some(actix_web::cookie::SameSite::None));
+        cookie.set_secure(Some(false));
+        cookie.set_http_only(true);
+        cookie.set_path("/");
+
         let mut response = ApiResponse::success_response(client);
         _ = response.add_cookie(&cookie);
         response

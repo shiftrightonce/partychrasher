@@ -78,7 +78,7 @@ where
         }
 
         if api_token.is_empty() {
-            if let Some(cookie) = req.cookie("_token") {
+            if let Some(cookie) = req.cookie("_party_t") {
                 api_token = cookie.value().to_string();
             }
         }

@@ -12,6 +12,9 @@ mod v1_track;
 
 pub(crate) fn config_api_service(config: &mut web::ServiceConfig) {
     let mut api_routes = web::scope("/api/v1");
+    let mut open_api_routes = web::scope("/open/api/v1");
+
+    // -- Secure routes
 
     // client routes
     api_routes = v1_client::register_routes(api_routes);
@@ -29,4 +32,10 @@ pub(crate) fn config_api_service(config: &mut web::ServiceConfig) {
     api_routes = v1_search::register_routes(api_routes);
 
     config.service(api_routes.wrap(auth_middleware::Auth));
+
+    // -- Open routes
+    // client open routes
+    open_api_routes = v1_client::register_open_routes(open_api_routes);
+
+    config.service(open_api_routes);
 }
