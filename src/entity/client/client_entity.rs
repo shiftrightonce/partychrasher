@@ -10,12 +10,13 @@ use crate::{
     helper::generate_id,
 };
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize)]
 pub(crate) struct ClientEntity {
     internal_id: Option<i64>,
     pub(crate) id: String,
     pub(crate) name: String,
     pub(crate) role: Role,
+    pub(crate) login_token: String,
     api_secret: String,
 }
 
@@ -27,6 +28,7 @@ impl Default for ClientEntity {
             name: generate_id(),
             role: Role::User,
             api_secret: "".to_string(),
+            login_token: "".to_string(),
         }
     }
 }
@@ -95,6 +97,7 @@ impl FromSqliteRow for ClientEntity {
                 "name" => entity.name = row.get(column.name()),
                 "api_secret" => entity.api_secret = row.get(column.name()),
                 "role" => entity.role = row.get::<String, &str>(column.name()).into(),
+                "login_token" => entity.login_token = row.get(column.name()),
                 _ => panic!("new field added to the clients table"),
             }
         }
@@ -150,6 +153,7 @@ pub(crate) struct OutClientEntityDto {
     pub(crate) id: String,
     pub(crate) name: String,
     pub(crate) role: Role,
+    pub(crate) login_token: String,
 }
 
 impl From<ClientEntity> for OutClientEntityDto {
@@ -158,6 +162,7 @@ impl From<ClientEntity> for OutClientEntityDto {
             id: value.id,
             name: value.name,
             role: value.role,
+            login_token: value.login_token,
         }
     }
 }

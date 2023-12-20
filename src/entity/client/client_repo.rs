@@ -1,4 +1,5 @@
 use futures::stream::TryStreamExt;
+use rand::Rng;
 use sqlx::sqlite::SqliteRow;
 use sqlx::Row;
 use ulid::Ulid;
@@ -25,6 +26,7 @@ impl ClientRepo {
 	"internal_id"	INTEGER,
 	"id"	TEXT NOT NULL UNIQUE,
 	"name"	TEXT UNIQUE,
+    "login_token" TEXT,
 	"role"	TEXT,
 	"api_secret"	TEXT,
 	PRIMARY KEY("internal_id" AUTOINCREMENT)
@@ -126,8 +128,8 @@ impl ClientRepo {
         rows
     }
 
-    pub(crate) async fn find_by_internal_id(&self, id: i64) -> Option<ClientEntity> {
-        if let Ok(row) = sqlx::query(r#"SELECT * FROM "clients" WHERE "internal_id" = ? ;"#)
+    pub(crate) async fn find_by_id(&self, id: &str) -> Option<ClientEntity> {
+        if let Ok(row) = sqlx::query(r#"SELECT * FROM "clients" WHERE "id" = ?;"#)
             .bind(id)
             .map(|row: SqliteRow| ClientEntity::from_row(row))
             .fetch_one(self.pool())
@@ -138,9 +140,9 @@ impl ClientRepo {
         None
     }
 
-    pub(crate) async fn find_by_id(&self, id: &str) -> Option<ClientEntity> {
-        if let Ok(row) = sqlx::query(r#"SELECT * FROM "clients" WHERE "id" = ?;"#)
-            .bind(id)
+    pub(crate) async fn find_by_login_token(&self, token: &str) -> Option<ClientEntity> {
+        if let Ok(row) = sqlx::query(r#"SELECT * FROM "clients" WHERE "login_token" = ?;"#)
+            .bind(token)
             .map(|row: SqliteRow| ClientEntity::from_row(row))
             .fetch_one(self.pool())
             .await
@@ -204,19 +206,20 @@ impl ClientRepo {
     ) -> Option<ClientEntity> {
         let api_secret = token.unwrap_or(self.generate_token());
         let entity_id = id.unwrap_or(generate_id());
-        match sqlx::query(
-            r#"INSERT INTO "clients"("id","name","api_secret","role") VALUES (?,?,?,?);"#,
+        if sqlx::query(
+            r#"INSERT INTO "clients" ("id","name","api_secret","role") VALUES (?,?,?,?);"#,
         )
-        .bind(entity_id)
+        .bind(&entity_id)
         .bind(client.name.unwrap_or(generate_id()))
         .bind(api_secret)
         .bind(client.role.unwrap_or_default().to_string())
         .execute(self.pool())
         .await
+        .is_ok()
         {
-            Ok(result) => self.find_by_internal_id(result.last_insert_rowid()).await,
-            _ => None,
+            return self.set_login_token(&entity_id).await;
         }
+        None
     }
 
     pub(crate) async fn create_default_admin(&self) -> Option<ClientEntity> {
@@ -285,11 +288,53 @@ impl ClientRepo {
         client
     }
 
+    pub(crate) async fn set_login_token(&self, client_id: &str) -> Option<ClientEntity> {
+        loop {
+            let token = self.generate_login_token();
+            if let Ok(total) = sqlx::query(
+                "SELECT COUNT(internal_id) as total FROM clients WHERE login_token = ? ",
+            )
+            .bind(&token)
+            .map(|row: SqliteRow| row.get::<i64, &str>("total"))
+            .fetch_one(self.pool())
+            .await
+            {
+                if total == 0
+                    && sqlx::query("UPDATE clients SET login_token = ? WHERE id = ?")
+                        .bind(&token)
+                        .bind(client_id)
+                        .execute(self.pool())
+                        .await
+                        .is_ok()
+                {
+                    return self.find_by_id(client_id).await;
+                }
+            }
+        }
+    }
+
     fn pool(&self) -> &DbConnection {
         &self.pool
     }
 
     fn generate_token(&self) -> String {
         sha256::digest(Ulid::new().to_string())
+    }
+
+    fn generate_login_token(&self) -> String {
+        let mut rng = rand::thread_rng();
+        let alph_rang = 'A'..='Z';
+        let num_rang = 0..=9;
+        let token = format!(
+            "{}-{}{}-{}{}{}",
+            rng.gen_range(alph_rang.clone()),
+            rng.gen_range(alph_rang.clone()),
+            rng.gen_range(num_rang.clone()),
+            rng.gen_range(num_rang.clone()),
+            rng.gen_range(num_rang.clone()),
+            rng.gen_range(alph_rang.clone()),
+        );
+
+        token.to_uppercase()
     }
 }

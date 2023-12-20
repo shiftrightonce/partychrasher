@@ -98,10 +98,12 @@ impl DbManager {
         if self.client_repo().setup_table().await && !self.client_repo().has_admin().await {
             if let Some(client) = self.client_repo().create_default_admin().await {
                 println!("Admin API Token: {}", &client.api_token());
+                println!("Admin Login Token: {}", &client.login_token);
             }
 
             if let Some(user) = self.client_repo().create_default_client().await {
                 println!("User API Token: {}", &user.api_token());
+                println!("User Login Token: {}", &user.login_token);
             }
         }
 

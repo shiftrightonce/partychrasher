@@ -77,20 +77,31 @@ where
             }
         }
 
+        if api_token.is_empty() {
+            if let Some(cookie) = req.cookie("_token") {
+                api_token = cookie.value().to_string();
+            }
+        }
+
+        let mut authenticated = false;
+
         if !api_token.is_empty() {
             if let Some(db_manager) = req.app_data::<Arc<DbManager>>() {
                 if let Some(client) =
                     block_on(db_manager.client_repo().find_by_api_token(&api_token))
                 {
                     req.request().extensions_mut().insert(client);
+                    authenticated = true;
                 }
             }
         }
 
-        // TODO: Learn how to return the response from here
-        // return Box::pin(async move {
-        //     Ok(req.into_response(HttpResponse::Unauthorized().finish().map_into_boxed_body()))
-        // });
+        if !authenticated {
+            // TODO: Learn how to return the response from here
+            // return Box::pin(async move {
+            //     Ok(req.into_response(HttpResponse::Unauthorized().finish().map_into_boxed_body()))
+            // });
+        }
 
         let fut = self.service.call(req);
         Box::pin(async move {

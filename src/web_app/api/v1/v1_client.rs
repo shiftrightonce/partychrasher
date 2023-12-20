@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use actix_web::{
+    cookie::Cookie,
     delete, get, post, put,
     web::{self},
     HttpRequest, HttpResponse, Responder, Scope,
@@ -16,6 +17,7 @@ pub(crate) fn register_routes(scope: Scope) -> Scope {
     scope
         .service(get_clients)
         .service(get_me)
+        .service(authenticate)
         .service(get_a_client)
         .service(create_client)
         .service(update_client)
@@ -193,5 +195,29 @@ async fn reset_token(id: web::Path<String>, req: HttpRequest) -> impl Responder 
         None => HttpResponse::Forbidden().json(ApiResponse::<OutApiTokenDto>::error(
             "Could not reset this client's api token",
         )),
+    }
+}
+
+#[get("/clients/auth/{id}")]
+async fn authenticate(req: HttpRequest, login_token: web::Path<String>) -> impl Responder {
+    let (_, response) = when_user::<ClientEntity>(&req).await;
+
+    if let Some(resp) = response {
+        return resp;
+    }
+
+    let db_manager = req.app_data::<Arc<DbManager>>().unwrap();
+
+    if let Some(client) = db_manager
+        .client_repo()
+        .find_by_login_token(login_token.as_str())
+        .await
+    {
+        let cookie = Cookie::new("_token", client.api_token());
+        let mut response = ApiResponse::success_response(client);
+        _ = response.add_cookie(&cookie);
+        response
+    } else {
+        ApiResponse::<ClientEntity>::into_response(None)
     }
 }
