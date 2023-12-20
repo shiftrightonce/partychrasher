@@ -213,10 +213,17 @@ async fn lofty_tag_processor(
 
     if let Ok(reader) = Probe::open(path) {
         if let Ok(tagged_file) = reader.read() {
-            let tag = match tagged_file.primary_tag() {
-                Some(tag) => tag,
-                None => tagged_file.first_tag().unwrap(),
-            };
+            let mut option_tag = tagged_file.primary_tag();
+            let tag;
+            if option_tag.is_none() {
+                option_tag = tagged_file.first_tag();
+            }
+
+            if let Some(t) = option_tag {
+                tag = t;
+            } else {
+                return metadata;
+            }
 
             metadata = MediaMetadata::from(tag);
 
