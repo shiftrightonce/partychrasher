@@ -270,7 +270,7 @@ impl ClientRepo {
             }
         }
         let client = self
-            .do_insert(ClientEntity::default_admin().into(), token, id)
+            .do_insert(ClientEntity::default_client().into(), token, id)
             .await;
 
         if client.is_some() {
