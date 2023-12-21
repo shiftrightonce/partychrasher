@@ -4,7 +4,10 @@ use actix_web::{delete, get, post, put, web, HttpRequest, Responder, Scope};
 
 use crate::{
     db::{DbManager, PaginatedResult, Paginator},
-    entity::playlist::{InPlaylistEntityDto, OutPlaylistEntityDto},
+    entity::{
+        playlist::{InPlaylistEntityDto, OutPlaylistEntityDto},
+        playlist_tracks::{InPlaylistTrackEntityDto, OutPlaylistTrackEntityDto},
+    },
     web_app::{api_response::ApiResponse, when_admin, when_user},
 };
 
@@ -12,6 +15,7 @@ pub(crate) fn register_routes(scope: Scope) -> Scope {
     scope
         .service(get_playlists)
         .service(get_default)
+        .service(add_tracks)
         .service(get_a_playlist)
         .service(create)
         .service(update)
@@ -139,4 +143,28 @@ async fn delete(req: HttpRequest, id: web::Path<String>) -> impl Responder {
             .await
             .map(OutPlaylistEntityDto::from),
     )
+}
+
+#[post("/playlists/add-tracks")]
+async fn add_tracks(
+    req: HttpRequest,
+    payload: web::Json<Vec<InPlaylistTrackEntityDto>>,
+) -> impl Responder {
+    let (_, response) = when_user::<OutPlaylistEntityDto>(&req).await;
+
+    if let Some(resp) = response {
+        return resp;
+    }
+
+    let db_manager = req.app_data::<Arc<DbManager>>().unwrap();
+
+    let repo = db_manager.playlist_track_repo();
+    let mut results = Vec::new();
+    for a_track in payload.0.into_iter() {
+        if let Some(playlist_track) = repo.create(a_track).await {
+            results.push(OutPlaylistTrackEntityDto::from(playlist_track));
+        }
+    }
+
+    ApiResponse::into_response(Some(results))
 }
