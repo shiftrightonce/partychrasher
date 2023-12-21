@@ -168,6 +168,27 @@ impl From<ClientEntity> for OutClientEntityDto {
 }
 
 #[derive(Debug, serde::Serialize)]
+pub(crate) struct OutMeDto {
+    pub(crate) id: String,
+    pub(crate) name: String,
+    pub(crate) role: Role,
+    pub(crate) login_token: String,
+    pub(crate) api_token: String,
+}
+
+impl From<ClientEntity> for OutMeDto {
+    fn from(value: ClientEntity) -> Self {
+        Self {
+            api_token: value.api_token(),
+            id: value.id,
+            name: value.name,
+            role: value.role,
+            login_token: value.login_token,
+        }
+    }
+}
+
+#[derive(Debug, serde::Serialize)]
 pub(crate) struct OutApiTokenDto {
     pub(crate) id: String,
     pub(crate) token: String,
