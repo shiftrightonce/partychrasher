@@ -33,15 +33,14 @@ CREATE TABLE "playlist_tracks" (
         entity: InPlaylistTrackEntityDto,
     ) -> Option<PlaylistTrackEntity> {
         let sql = "INSERT INTO playlist_tracks (playlist_id, track_id, metadata) values (?, ?, ?)";
-        if let Err(e) = sqlx::query(sql)
+        if sqlx::query(sql)
             .bind(&entity.playlist_id)
             .bind(&entity.track_id)
             .bind(&entity.metadata)
             .execute(self.pool())
             .await
+            .is_ok()
         {
-            println!("playlist track error: {:?}", e.to_string())
-        } else {
             return self
                 .find(entity.playlist_id.as_str(), entity.track_id.as_str())
                 .await;
@@ -55,7 +54,7 @@ CREATE TABLE "playlist_tracks" (
         playlist_id: &str,
         track_id: &str,
     ) -> Option<PlaylistTrackEntity> {
-        let sql = "SELECT * FROM playlist_tracks WHERE playlist_id = ? AND artist_id = ?";
+        let sql = "SELECT * FROM playlist_tracks WHERE playlist_id = ? AND track_id = ?";
 
         if let Ok(row) = sqlx::query(sql)
             .bind(playlist_id)
