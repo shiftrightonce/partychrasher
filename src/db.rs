@@ -301,7 +301,8 @@ impl TryFrom<&HttpRequest> for Paginator {
 
     fn try_from(value: &HttpRequest) -> Result<Self, Self::Error> {
         let query = Query::<HashMap<String, String>>::from_query(value.query_string()).unwrap();
-        if let Some(page) = query.get("page") {
+
+        if let Some(page) = query.get("_page") {
             Ok(if let Some(the_string) = base64_decode_to_string(page) {
                 Paginator::from(the_string)
             } else {
