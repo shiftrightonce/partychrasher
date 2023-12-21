@@ -1,6 +1,6 @@
 use crate::{db::DbConnection, entity::FromSqliteRow};
 
-use super::{InPlaylistTrackEntityDto, PlaylistTrackEntity};
+use super::{InPlaylistTrackEntityDto, PlaylistTrackAddedEvent, PlaylistTrackEntity};
 
 pub(crate) struct PlaylistTracksRepo {
     pool: DbConnection,
@@ -41,9 +41,16 @@ CREATE TABLE "playlist_tracks" (
             .await
             .is_ok()
         {
-            return self
+            let result = self
                 .find(entity.playlist_id.as_str(), entity.track_id.as_str())
                 .await;
+
+            orsomafo::Dispatchable::dispatch_event(PlaylistTrackAddedEvent::new(
+                &result.as_ref().unwrap().playlist_id,
+                &result.as_ref().unwrap().track_id,
+            ));
+
+            return result;
         }
 
         None

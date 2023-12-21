@@ -9,6 +9,7 @@ mod v1_file_server;
 mod v1_playlist;
 mod v1_search;
 mod v1_track;
+mod v1_websocket;
 
 pub(crate) fn config_api_service(config: &mut web::ServiceConfig) {
     let mut api_routes = web::scope("/api/v1");
@@ -30,6 +31,8 @@ pub(crate) fn config_api_service(config: &mut web::ServiceConfig) {
     api_routes = v1_file_server::register_routes(api_routes);
     // Search route
     api_routes = v1_search::register_routes(api_routes);
+    // Websocket
+    api_routes = v1_websocket::register_routes(api_routes);
 
     config.service(api_routes.wrap(auth_middleware::Auth));
 

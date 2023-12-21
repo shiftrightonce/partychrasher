@@ -13,7 +13,7 @@ use std::{
 use actix::prelude::*;
 use rand::{self, rngs::ThreadRng, Rng};
 
-use crate::player::PlayerUpdate;
+use super::websocket_message::WebsocketMessage;
 
 /// Chat server sends this messages to session
 #[derive(Message)]
@@ -216,9 +216,9 @@ impl Handler<Join> for ChatServer {
     }
 }
 
-impl Handler<PlayerUpdate> for ChatServer {
+impl Handler<WebsocketMessage> for ChatServer {
     type Result = ();
-    fn handle(&mut self, msg: PlayerUpdate, _: &mut Context<Self>) -> Self::Result {
+    fn handle(&mut self, msg: WebsocketMessage, _: &mut Context<Self>) -> Self::Result {
         self.send_message("main", msg.to_string().as_str(), 0);
     }
 }

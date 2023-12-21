@@ -8,10 +8,10 @@ static UI_EMBEDDED_ASSETS: Dir = include_dir!("./ui/app/dist/spa");
 use crate::{
     config::Config,
     db::DbManager,
-    entity::client::ClientEntity,
-    player::{PlayerCommand, PlayerUpdate},
+    entity::{client::ClientEntity, playlist_tracks::PlaylistTrackAddedEvent},
+    player::PlayerCommand,
     queue_manager::QueueManagerCommand,
-    websocket::{self, server},
+    websocket::{server, websocket_message::WebsocketMessage},
 };
 use actix_web::{
     get,
@@ -23,6 +23,7 @@ use self::{
     admin::handle_admin_command,
     api_response::ApiResponse,
     docs::dev_docs_index_handler,
+    event_handler::PlaylistTrackAddedHandler,
     query::{handle_get_playlist_query, handle_next_query, handle_previous_query},
     user::handle_user_command,
 };
@@ -32,6 +33,7 @@ mod api;
 mod api_response;
 mod auth_middleware;
 mod docs;
+mod event_handler;
 mod query;
 mod user;
 
@@ -39,7 +41,7 @@ pub(crate) async fn start_webapp(
     config: &Config,
     player_sender: std::sync::mpsc::Sender<PlayerCommand>,
     queue_manager_sender: std::sync::mpsc::Sender<QueueManagerCommand>,
-    mut b_receiver: tokio::sync::mpsc::UnboundedReceiver<PlayerUpdate>,
+    mut b_receiver: tokio::sync::mpsc::UnboundedReceiver<WebsocketMessage>,
     db_manager: Arc<DbManager>,
 ) {
     let app_state = Arc::new(AtomicUsize::new(0));
@@ -47,6 +49,12 @@ pub(crate) async fn start_webapp(
     // start chat server actor
     let server = server::ChatServer::new(app_state.clone()).start();
     let server_copy = server.clone();
+
+    // events' handlers
+    orsomafo::EventDispatcherBuilder::new()
+        .listen_with::<PlaylistTrackAddedEvent>(PlaylistTrackAddedHandler::new(server_copy.clone()))
+        .build()
+        .await;
 
     std::thread::spawn(move || loop {
         if let Ok(msg) = b_receiver.try_recv() {
@@ -83,7 +91,6 @@ pub(crate) async fn start_webapp(
             )
             .route("/play", web::post().to(play_track))
             .route("/cmd", web::post().to(command))
-            .route("/ws", web::get().to(websocket::handle_websocket))
     })
     .bind((config.http_host(), config.http_port()))
     .expect("could not bind to port: 8080")

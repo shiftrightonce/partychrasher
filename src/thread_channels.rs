@@ -1,18 +1,19 @@
 use crate::{
     cli,
     config::Config,
-    player::{self, PlayerCommand, PlayerUpdate},
+    player::{self, PlayerCommand},
     queue_manager::{self, QueueManagerCommand},
+    websocket::websocket_message::WebsocketMessage,
 };
 
 pub(crate) fn setup_threads(
     config: &Config,
 ) -> (
-    tokio::sync::mpsc::UnboundedReceiver<PlayerUpdate>,
+    tokio::sync::mpsc::UnboundedReceiver<WebsocketMessage>,
     std::sync::mpsc::Sender<PlayerCommand>,
     std::sync::mpsc::Sender<QueueManagerCommand>,
 ) {
-    let (tx, rx) = tokio::sync::mpsc::unbounded_channel::<PlayerUpdate>();
+    let (tx, rx) = tokio::sync::mpsc::unbounded_channel::<WebsocketMessage>();
     let update_tx = setup_progress_thread(tx);
     let cmd_tx = setup_player_thread(update_tx);
 
@@ -27,9 +28,9 @@ pub(crate) fn setup_threads(
 }
 
 fn setup_progress_thread(
-    websocket_tx: tokio::sync::mpsc::UnboundedSender<PlayerUpdate>,
-) -> std::sync::mpsc::Sender<PlayerUpdate> {
-    let (tx, rx) = std::sync::mpsc::channel::<PlayerUpdate>();
+    websocket_tx: tokio::sync::mpsc::UnboundedSender<WebsocketMessage>,
+) -> std::sync::mpsc::Sender<WebsocketMessage> {
+    let (tx, rx) = std::sync::mpsc::channel::<WebsocketMessage>();
 
     std::thread::spawn(move || loop {
         if let Ok(update) = rx.try_recv() {
@@ -42,7 +43,7 @@ fn setup_progress_thread(
 }
 
 fn setup_player_thread(
-    progress_tx: std::sync::mpsc::Sender<PlayerUpdate>,
+    progress_tx: std::sync::mpsc::Sender<WebsocketMessage>,
 ) -> std::sync::mpsc::Sender<PlayerCommand> {
     let (sender, receiver) = std::sync::mpsc::channel::<PlayerCommand>();
 

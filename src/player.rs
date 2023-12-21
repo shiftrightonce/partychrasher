@@ -1,7 +1,4 @@
-use std::fmt::Display;
 use std::{fs::File, path::Path};
-
-use actix::prelude::*;
 
 use symphonia::core::codecs::FinalizeResult;
 use symphonia::core::errors::{Error, Result};
@@ -19,6 +16,7 @@ use symphonia::core::{
 use log::warn;
 
 use crate::output;
+use crate::websocket::websocket_message::WebsocketMessage;
 
 const LOG_TARGET: &str = "player";
 
@@ -30,7 +28,7 @@ enum InternalPlayerCommands {
 
 pub(crate) fn handle_request(
     receiver: std::sync::mpsc::Receiver<PlayerCommand>,
-    sync_sender: std::sync::mpsc::Sender<PlayerUpdate>,
+    sync_sender: std::sync::mpsc::Sender<WebsocketMessage>,
 ) {
     let mut current_sender: Option<std::sync::mpsc::Sender<InternalPlayerCommands>> = None;
     loop {
@@ -83,34 +81,10 @@ pub(crate) enum PlayerCommand {
     Play(String),
 }
 
-#[derive(Message)]
-#[rtype(result = "()")]
-pub(crate) enum PlayerUpdate {
-    Progress {
-        position: (u64, u64, f64),
-        total: (u64, u64, f64),
-    },
-}
-
-impl Display for PlayerUpdate {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Progress {
-                position: (h, m, s),
-                total: (th, tm, ts),
-            } => {
-                let total = format!("{{\"h\": {}, \"m\": {}, \"s\": {}}}", th, tm, ts);
-                let pos = format!("{{\"h\": {}, \"m\": {}, \"s\": {}}}", h, m, s);
-                write!(f, "{{\"pos\": {}, \"total\": {} }}", pos, total)
-            }
-        }
-    }
-}
-
 fn play_music(
     path: &str,
     receiver: std::sync::mpsc::Receiver<InternalPlayerCommands>,
-    sync_sender: std::sync::mpsc::Sender<PlayerUpdate>,
+    sync_sender: std::sync::mpsc::Sender<WebsocketMessage>,
 ) {
     log::debug!(target: LOG_TARGET,"playing track: {}", path);
     let mut hint = Hint::new();
@@ -179,7 +153,7 @@ fn play(
     seek_time: Option<f64>,
     decode_opts: &DecoderOptions,
     receiver: std::sync::mpsc::Receiver<InternalPlayerCommands>,
-    sync_sender: std::sync::mpsc::Sender<PlayerUpdate>,
+    sync_sender: std::sync::mpsc::Sender<WebsocketMessage>,
 ) -> Result<i32> {
     // If the user provided a track number, select that track if it exists, otherwise, select the
     // first track with a known codec.
@@ -275,7 +249,7 @@ fn play_track(
     decode_opts: &DecoderOptions,
     receiver: &std::sync::mpsc::Receiver<InternalPlayerCommands>,
     pause: &mut bool,
-    sync_sender: &std::sync::mpsc::Sender<PlayerUpdate>,
+    sync_sender: &std::sync::mpsc::Sender<WebsocketMessage>,
 ) -> Result<i32> {
     // Get the selected track using the track ID.
     let track = match reader
@@ -610,7 +584,7 @@ fn print_progress(
     ts: u64,
     dur: Option<u64>,
     tb: Option<TimeBase>,
-    sync_sender: &std::sync::mpsc::Sender<PlayerUpdate>,
+    sync_sender: &std::sync::mpsc::Sender<WebsocketMessage>,
 ) {
     if let Some(tb) = tb {
         let t = tb.calc_time(ts);
@@ -626,12 +600,12 @@ fn print_progress(
             let t_mins = (d.seconds % (60 * 60)) / 60;
             let t_secs = f64::from((d.seconds % 60) as u32) + d.frac;
 
-            _ = sync_sender.send(PlayerUpdate::Progress {
+            _ = sync_sender.send(WebsocketMessage::PlayProgress {
                 position: (p_hours, p_mins, p_secs),
                 total: (t_hours, t_mins, t_secs),
             });
         } else {
-            _ = sync_sender.send(PlayerUpdate::Progress {
+            _ = sync_sender.send(WebsocketMessage::PlayProgress {
                 position: (p_hours, p_mins, p_secs),
                 total: Default::default(),
             });

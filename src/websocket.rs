@@ -8,6 +8,7 @@ use crate::config::Config;
 
 pub(crate) mod server;
 pub(crate) mod session;
+pub(crate) mod websocket_message;
 
 pub(crate) async fn handle_websocket(
     req: HttpRequest,
