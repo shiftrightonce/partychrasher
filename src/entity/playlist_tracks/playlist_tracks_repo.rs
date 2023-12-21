@@ -68,4 +68,21 @@ CREATE TABLE "playlist_tracks" (
 
         None
     }
+
+    pub(crate) async fn delete(
+        &self,
+        entity: InPlaylistTrackEntityDto,
+    ) -> Option<PlaylistTrackEntity> {
+        let existing = self.find(&entity.playlist_id, &entity.track_id).await;
+
+        if existing.is_some() {
+            _ = sqlx::query("DELETE FROM playlist_tracks WHERE playlist_id = ? AND track_id = ?")
+                .bind(&entity.playlist_id)
+                .bind(&entity.track_id)
+                .execute(self.pool())
+                .await;
+        }
+
+        existing
+    }
 }

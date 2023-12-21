@@ -16,6 +16,7 @@ pub(crate) fn register_routes(scope: Scope) -> Scope {
         .service(get_playlists)
         .service(get_default)
         .service(add_tracks)
+        .service(remove_tracks)
         .service(get_a_playlist)
         .service(create)
         .service(update)
@@ -162,6 +163,30 @@ async fn add_tracks(
     let mut results = Vec::new();
     for a_track in payload.0.into_iter() {
         if let Some(playlist_track) = repo.create(a_track).await {
+            results.push(OutPlaylistTrackEntityDto::from(playlist_track));
+        }
+    }
+
+    ApiResponse::into_response(Some(results))
+}
+
+#[post("/playlists/remove-tracks")]
+async fn remove_tracks(
+    req: HttpRequest,
+    payload: web::Json<Vec<InPlaylistTrackEntityDto>>,
+) -> impl Responder {
+    let (_, response) = when_admin::<OutPlaylistEntityDto>(&req).await;
+
+    if let Some(resp) = response {
+        return resp;
+    }
+
+    let db_manager = req.app_data::<Arc<DbManager>>().unwrap();
+
+    let repo = db_manager.playlist_track_repo();
+    let mut results = Vec::new();
+    for a_track in payload.0.into_iter() {
+        if let Some(playlist_track) = repo.delete(a_track).await {
             results.push(OutPlaylistTrackEntityDto::from(playlist_track));
         }
     }
