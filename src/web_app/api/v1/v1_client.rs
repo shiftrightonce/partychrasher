@@ -9,7 +9,9 @@ use actix_web::{
 
 use crate::{
     db::{DbManager, PaginatedResult, Paginator},
-    entity::client::{ClientEntity, InClientEntityDto, OutApiTokenDto, OutClientEntityDto},
+    entity::client::{
+        ClientEntity, InClientEntityDto, OutApiTokenDto, OutClientEntityDto, OutMeDto,
+    },
     web_app::{api_response::ApiResponse, when_admin, when_user},
 };
 
@@ -58,7 +60,7 @@ async fn get_me(req: HttpRequest) -> impl Responder {
         return resp;
     }
 
-    ApiResponse::into_response(ClientEntity::try_from(&req).ok())
+    ApiResponse::into_response(ClientEntity::try_from(&req).ok().map(OutMeDto::from))
 }
 
 #[get("/clients/{id}")]
@@ -211,11 +213,11 @@ pub(crate) async fn authenticate(
     {
         let mut cookie = Cookie::new("_party_t", client.api_token());
         cookie.set_same_site(Some(actix_web::cookie::SameSite::None));
-        cookie.set_secure(Some(false));
+        cookie.set_secure(Some(true));
         cookie.set_http_only(true);
         cookie.set_path("/");
 
-        let mut response = ApiResponse::success_response(client);
+        let mut response = ApiResponse::success_response(OutMeDto::from(client));
         _ = response.add_cookie(&cookie);
         response
     } else {
