@@ -52,17 +52,13 @@ async fn get_clients(req: HttpRequest) -> impl Responder {
 
 #[get("clients/me")]
 async fn get_me(req: HttpRequest) -> impl Responder {
-    let (_, response) = when_user::<OutClientEntityDto>(&req).await;
+    let (_, response) = when_user::<ClientEntity>(&req).await;
 
     if let Some(resp) = response {
         return resp;
     }
 
-    ApiResponse::into_response(
-        ClientEntity::try_from(&req)
-            .ok()
-            .map(OutClientEntityDto::from),
-    )
+    ApiResponse::into_response(ClientEntity::try_from(&req).ok())
 }
 
 #[get("/clients/{id}")]
