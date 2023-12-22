@@ -313,6 +313,19 @@ impl ClientRepo {
         }
     }
 
+    pub(crate) async fn random_client_by_role(&self, role: Role) -> Option<ClientEntity> {
+        if let Ok(client) = sqlx::query("SELECT * FROM clients WHERE role = ? ORDER BY RANDOM()")
+            .bind(role.to_string())
+            .map(ClientEntity::from_row)
+            .fetch_one(self.pool())
+            .await
+        {
+            return client;
+        }
+
+        None
+    }
+
     fn pool(&self) -> &DbConnection {
         &self.pool
     }
