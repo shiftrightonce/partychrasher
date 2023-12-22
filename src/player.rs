@@ -16,7 +16,7 @@ use symphonia::core::{
 use log::warn;
 
 use crate::output;
-use crate::websocket::websocket_message::WebsocketMessage;
+use crate::websocket::websocket_message::{PlayerEvent, WebsocketMessage};
 
 const LOG_TARGET: &str = "player";
 
@@ -600,14 +600,18 @@ fn print_progress(
             let t_mins = (d.seconds % (60 * 60)) / 60;
             let t_secs = f64::from((d.seconds % 60) as u32) + d.frac;
 
-            _ = sync_sender.send(WebsocketMessage::PlayProgress {
-                position: (p_hours, p_mins, p_secs),
-                total: (t_hours, t_mins, t_secs),
+            _ = sync_sender.send(WebsocketMessage::PlayerEvent {
+                event: PlayerEvent::Progress {
+                    position: (p_hours, p_mins, p_secs),
+                    total: (t_hours, t_mins, t_secs),
+                },
             });
         } else {
-            _ = sync_sender.send(WebsocketMessage::PlayProgress {
-                position: (p_hours, p_mins, p_secs),
-                total: Default::default(),
+            _ = sync_sender.send(WebsocketMessage::PlayerEvent {
+                event: PlayerEvent::Progress {
+                    position: (p_hours, p_mins, p_secs),
+                    total: Default::default(),
+                },
             });
         }
     }
