@@ -8,6 +8,7 @@ use crate::entity::FromSqliteRow;
 
 #[derive(Debug, Default)]
 pub(crate) struct PlaylistTrackEntity {
+    pub(crate) internal_id: i64,
     pub(crate) playlist_id: String,
     pub(crate) track_id: String,
     pub(crate) metadata: String,
@@ -36,6 +37,7 @@ impl From<PlaylistTrackEntity> for InPlaylistTrackEntityDto {
 
 #[derive(Debug, serde::Serialize)]
 pub(crate) struct OutPlaylistTrackEntityDto {
+    pub(crate) order_number: i64,
     pub(crate) playlist_id: String,
     pub(crate) track_id: String,
     pub(crate) metadata: String,
@@ -44,6 +46,7 @@ pub(crate) struct OutPlaylistTrackEntityDto {
 impl From<PlaylistTrackEntity> for OutPlaylistTrackEntityDto {
     fn from(entity: PlaylistTrackEntity) -> Self {
         Self {
+            order_number: entity.internal_id,
             playlist_id: entity.playlist_id,
             track_id: entity.track_id,
             metadata: entity.metadata,
@@ -73,6 +76,7 @@ impl FromSqliteRow for PlaylistTrackEntity {
             match column.name() {
                 "playlist_id" => entity.playlist_id = row.get(column.name()),
                 "track_id" => entity.track_id = row.get(column.name()),
+                "internal_id" => entity.internal_id = row.get(column.name()),
                 "metadata" => entity.metadata = row.get(column.name()),
                 _ => panic!("New field added to the playlist_tracks table"),
             }

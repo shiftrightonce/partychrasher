@@ -1,4 +1,4 @@
-use actix_web::web;
+use actix_web::{middleware, web};
 
 use crate::web_app::auth_middleware;
 
@@ -34,7 +34,11 @@ pub(crate) fn config_api_service(config: &mut web::ServiceConfig) {
     // Websocket
     api_routes = v1_websocket::register_routes(api_routes);
 
-    config.service(api_routes.wrap(auth_middleware::Auth));
+    config.service(
+        api_routes
+            .wrap(middleware::NormalizePath::default())
+            .wrap(auth_middleware::Auth),
+    );
 
     // -- Open routes
     // client open routes

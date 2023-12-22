@@ -5,7 +5,7 @@ use ulid::Ulid;
 
 use crate::{
     db::{DbConnection, Paginator, PaginatorDirection},
-    entity::FromSqliteRow,
+    entity::{playlist_tracks::PlaylistIsDefaultEvent, FromSqliteRow},
 };
 
 use super::{InPlaylistEntityDto, PlaylistEntity};
@@ -196,11 +196,15 @@ impl PlaylistRepo {
     }
 
     async fn clean_existing_default(&self, id: &str, is_default: bool) {
-        if is_default {
-            _ = sqlx::query("UPDATE playlists set is_default = 0 WHERE is_default = 1 AND id != ?")
+        if is_default
+            && sqlx::query("UPDATE playlists set is_default = 0 WHERE is_default = 1 AND id != ?")
                 .bind(id)
                 .execute(self.pool())
-                .await;
+                .await
+                .is_ok()
+        {
+            // Dispatch Default playlist set event
+            orsomafo::Dispatchable::dispatch_event(PlaylistIsDefaultEvent::new(id));
         }
     }
 }

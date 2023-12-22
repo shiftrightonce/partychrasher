@@ -1,6 +1,9 @@
 use crate::{db::DbConnection, entity::FromSqliteRow};
 
-use super::{InPlaylistTrackEntityDto, PlaylistTrackAddedEvent, PlaylistTrackEntity};
+use super::{
+    InPlaylistTrackEntityDto, PlaylistTrackAddedEvent, PlaylistTrackEntity,
+    PlaylistTrackRemovedEvent,
+};
 
 pub(crate) struct PlaylistTracksRepo {
     pool: DbConnection,
@@ -18,10 +21,12 @@ impl PlaylistTracksRepo {
     pub(crate) async fn setup_table(&self) {
         let sql = r#"
 CREATE TABLE "playlist_tracks" (
+	"internal_id"	INTEGER,
     "track_id"	TEXT NOT NULL,
     "playlist_id"	TEXT NOT NULL,
     "metadata" TEXT,
-    UNIQUE("track_id","playlist_id")
+    UNIQUE("track_id","playlist_id"),
+	PRIMARY KEY("internal_id" AUTOINCREMENT)
 );
        "#;
 
@@ -45,7 +50,9 @@ CREATE TABLE "playlist_tracks" (
                 .find(entity.playlist_id.as_str(), entity.track_id.as_str())
                 .await;
 
+            // Dispatch track added event
             orsomafo::Dispatchable::dispatch_event(PlaylistTrackAddedEvent::new(
+                result.as_ref().unwrap().internal_id,
                 &result.as_ref().unwrap().playlist_id,
                 &result.as_ref().unwrap().track_id,
             ));
@@ -82,12 +89,20 @@ CREATE TABLE "playlist_tracks" (
     ) -> Option<PlaylistTrackEntity> {
         let existing = self.find(&entity.playlist_id, &entity.track_id).await;
 
-        if existing.is_some() {
-            _ = sqlx::query("DELETE FROM playlist_tracks WHERE playlist_id = ? AND track_id = ?")
+        if existing.is_some()
+            && sqlx::query("DELETE FROM playlist_tracks WHERE playlist_id = ? AND track_id = ?")
                 .bind(&entity.playlist_id)
                 .bind(&entity.track_id)
                 .execute(self.pool())
-                .await;
+                .await
+                .is_ok()
+        {
+            // Dispatch track remove event
+            orsomafo::Dispatchable::dispatch_event(PlaylistTrackRemovedEvent::new(
+                existing.as_ref().unwrap().internal_id,
+                &existing.as_ref().unwrap().playlist_id,
+                &existing.as_ref().unwrap().track_id,
+            ));
         }
 
         existing

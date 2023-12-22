@@ -8,7 +8,12 @@ static UI_EMBEDDED_ASSETS: Dir = include_dir!("./ui/app/dist/spa");
 use crate::{
     config::Config,
     db::DbManager,
-    entity::{client::ClientEntity, playlist_tracks::PlaylistTrackAddedEvent},
+    entity::{
+        client::ClientEntity,
+        playlist_tracks::{
+            PlaylistIsDefaultEvent, PlaylistTrackAddedEvent, PlaylistTrackRemovedEvent,
+        },
+    },
     player::PlayerCommand,
     queue_manager::QueueManagerCommand,
     websocket::{server, websocket_message::WebsocketMessage},
@@ -23,7 +28,9 @@ use self::{
     admin::handle_admin_command,
     api_response::ApiResponse,
     docs::dev_docs_index_handler,
-    event_handler::PlaylistTrackAddedHandler,
+    event_handler::{
+        PlaylistIsDefaultEventHandler, PlaylistTrackAddedHandler, PlaylistTrackRemovedHandler,
+    },
     query::{handle_get_playlist_query, handle_next_query, handle_previous_query},
     user::handle_user_command,
 };
@@ -53,6 +60,12 @@ pub(crate) async fn start_webapp(
     // events' handlers
     orsomafo::EventDispatcherBuilder::new()
         .listen_with::<PlaylistTrackAddedEvent>(PlaylistTrackAddedHandler::new(server_copy.clone()))
+        .listen_with::<PlaylistTrackRemovedEvent>(PlaylistTrackRemovedHandler::new(
+            server_copy.clone(),
+        ))
+        .listen_with::<PlaylistIsDefaultEvent>(PlaylistIsDefaultEventHandler::new(
+            server_copy.clone(),
+        ))
         .build()
         .await;
 
