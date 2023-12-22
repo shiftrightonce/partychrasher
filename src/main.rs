@@ -49,6 +49,8 @@ async fn main() {
         }
     }
     pretty_env_logger::init();
+    orsomafo::EventDispatcherBuilder::new().build().await;
+
     let mut config_builder = ConfigBuilder::new();
     let cli = Cli::parse();
     let mut seeding = false;
