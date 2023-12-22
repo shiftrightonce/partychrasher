@@ -9,8 +9,9 @@ use actix_web::{
 
 use crate::{
     db::{DbManager, PaginatedResult, Paginator},
-    entity::client::{
-        ClientEntity, InClientEntityDto, OutApiTokenDto, OutClientEntityDto, OutMeDto,
+    entity::{
+        client::{ClientEntity, InClientEntityDto, OutApiTokenDto, OutClientEntityDto, OutMeDto},
+        Role,
     },
     web_app::{api_response::ApiResponse, when_admin, when_user},
 };
@@ -19,6 +20,7 @@ pub(crate) fn register_routes(scope: Scope) -> Scope {
     scope
         .service(get_clients)
         .service(get_me)
+        .service(get_a_user_client)
         .service(get_a_client)
         .service(create_client)
         .service(update_client)
@@ -223,4 +225,22 @@ pub(crate) async fn authenticate(
     } else {
         ApiResponse::<ClientEntity>::into_response(None)
     }
+}
+
+#[get("/clients/random-user")]
+async fn get_a_user_client(req: HttpRequest) -> impl Responder {
+    let (_, response) = when_admin::<OutApiTokenDto>(&req).await;
+
+    if let Some(resp) = response {
+        return resp;
+    }
+
+    let db_manager = req.app_data::<Arc<DbManager>>().unwrap();
+    ApiResponse::into_response(
+        db_manager
+            .client_repo()
+            .random_client_by_role(Role::User)
+            .await
+            .map(OutMeDto::from),
+    )
 }
