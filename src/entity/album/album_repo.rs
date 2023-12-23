@@ -1,6 +1,7 @@
 #![allow(dead_code)]
 
 use futures::stream::TryStreamExt;
+use orsomafo::Dispatchable;
 use sqlx::sqlite::SqliteRow;
 use ulid::Ulid;
 
@@ -9,7 +10,7 @@ use crate::{
     entity::FromSqliteRow,
 };
 
-use super::{AlbumEntity, InAlbumEntityDto};
+use super::{AlbumAddedEvent, AlbumDeletedEvent, AlbumEntity, AlbumUpdatedEvent, InAlbumEntityDto};
 
 pub(crate) struct AlbumRepo {
     pool: DbConnection,
@@ -43,17 +44,26 @@ impl AlbumRepo {
 
         let id = Ulid::new().to_string().to_lowercase();
 
-        if let Err(e) = sqlx::query(sql)
+        if sqlx::query(sql)
             .bind(&id)
             .bind(album.title)
             .bind(album.metadata.unwrap_or_default().to_string())
             .bind(album.year.unwrap_or_default())
             .execute(self.pool())
             .await
+            .is_ok()
         {
-            println!("album error: {:?}", e);
-        } else {
-            return self.find_by_id(&id).await;
+            let result = self.find_by_id(&id).await;
+
+            // Dispatch album added event
+            if result.is_some() {
+                (AlbumAddedEvent {
+                    album_id: result.as_ref().unwrap().id.clone(),
+                })
+                .dispatch_event();
+            }
+
+            return result;
         }
         None
     }
@@ -70,7 +80,16 @@ impl AlbumRepo {
                 .await
                 .is_ok()
             {
-                return self.find_by_id(id).await;
+                let result = self.find_by_id(id).await;
+
+                // Dispatch album updated event
+                if result.is_none() {
+                    (AlbumUpdatedEvent {
+                        album_id: result.as_ref().unwrap().id.clone(),
+                    })
+                    .dispatch_event();
+                }
+                return result;
             }
         }
 
@@ -85,6 +104,12 @@ impl AlbumRepo {
                 .await
                 .is_ok()
             {
+                // Dispatch album deleted event
+                (AlbumDeletedEvent {
+                    album_id: entity.id.clone(),
+                })
+                .dispatch_event();
+
                 return Some(entity);
             }
         }

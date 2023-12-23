@@ -104,6 +104,21 @@ impl SearchRepo {
     }
     }
 
+    pub(crate) async fn update(&self, entity: InSearchHitEntityDto) {
+        // for now use the "create" method.
+        // in the future, we may want to do something like flush the
+        // existing entries for this entity
+        self.create(entity).await;
+    }
+
+    pub(crate) async fn delete(&self, entity: InSearchHitEntityDto) {
+        _ = sqlx::query("DELETE FROM search_hits WHERE entity = ? AND entity_id = ?")
+            .bind(&entity.entity)
+            .bind(&entity.entity_id)
+            .execute(self.pool())
+            .await
+    }
+
     pub(crate) async fn search(&self, keyword: &str) -> Vec<SearchHitEntity> {
         let mut results = Vec::new();
         let mut result_stream = sqlx::query(

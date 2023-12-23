@@ -71,7 +71,6 @@ async fn process_entry(entry: DirEntry, db_manager: &DbManager, config: &Config)
                             db_manager,
                         )
                         .await;
-                        add_track_to_search(add_track_result.0.as_ref().unwrap(), db_manager).await;
                     }
                 }
             }
@@ -182,12 +181,12 @@ async fn add_album(
     }
 }
 
-async fn add_track_to_search(track: &TrackEntity, db_manager: &DbManager) {
-    _ = db_manager
-        .search_repo()
-        .create(InSearchHitEntityDto::from(track))
-        .await;
-}
+// async fn add_track_to_search(track: &TrackEntity, db_manager: &DbManager) {
+//     _ = db_manager
+//         .search_repo()
+//         .create(InSearchHitEntityDto::from(track))
+//         .await;
+// }
 
 async fn add_album_to_search(album: &AlbumEntity, db_manager: &DbManager) {
     _ = db_manager

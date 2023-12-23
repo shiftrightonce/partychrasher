@@ -1,4 +1,5 @@
 use actix::Addr;
+use orsomafo::EventDispatcherBuilder;
 
 use crate::{
     entity::playlist_tracks::{
@@ -10,22 +11,23 @@ use crate::{
     },
 };
 
-#[derive(Debug)]
-pub(crate) struct PlaylistTrackAddedHandler {
-    ws_server: Addr<ChatServer>,
+pub(crate) fn register(builder: EventDispatcherBuilder) -> EventDispatcherBuilder {
+    builder
+        .listen_with::<PlaylistTrackAddedEvent>(HandleTrackAdded)
+        .listen_with::<PlaylistTrackRemovedEvent>(HandleTrackRemoved)
+        .listen_with::<PlaylistIsDefaultEvent>(HandleDefaultSet)
 }
 
-impl PlaylistTrackAddedHandler {
-    pub(crate) fn new(ws_server: Addr<ChatServer>) -> Self {
-        Self { ws_server }
-    }
-}
+#[derive(Debug)]
+struct HandleTrackAdded;
 
 #[orsomafo::async_trait]
-impl orsomafo::EventHandler for PlaylistTrackAddedHandler {
+impl orsomafo::EventHandler for HandleTrackAdded {
     async fn handle(&self, dispatched: &orsomafo::DispatchedEvent) {
         if let Some(event) = dispatched.the_event::<PlaylistTrackAddedEvent>() {
-            self.ws_server.do_send(WebsocketMessage::from(event));
+            if let Some(ws_server) = busybody::helpers::get_type::<Addr<ChatServer>>() {
+                ws_server.do_send(WebsocketMessage::from(event));
+            }
         }
     }
 }
@@ -45,21 +47,15 @@ impl From<PlaylistTrackAddedEvent> for WebsocketMessage {
 // ---
 
 #[derive(Debug)]
-pub(crate) struct PlaylistTrackRemovedHandler {
-    ws_server: Addr<ChatServer>,
-}
-
-impl PlaylistTrackRemovedHandler {
-    pub(crate) fn new(ws_server: Addr<ChatServer>) -> Self {
-        Self { ws_server }
-    }
-}
+struct HandleTrackRemoved;
 
 #[orsomafo::async_trait]
-impl orsomafo::EventHandler for PlaylistTrackRemovedHandler {
+impl orsomafo::EventHandler for HandleTrackRemoved {
     async fn handle(&self, dispatched: &orsomafo::DispatchedEvent) {
         if let Some(event) = dispatched.the_event::<PlaylistTrackRemovedEvent>() {
-            self.ws_server.do_send(WebsocketMessage::from(event));
+            if let Some(ws_server) = busybody::helpers::get_type::<Addr<ChatServer>>() {
+                ws_server.do_send(WebsocketMessage::from(event));
+            }
         }
     }
 }
@@ -79,21 +75,15 @@ impl From<PlaylistTrackRemovedEvent> for WebsocketMessage {
 // -
 
 #[derive(Debug)]
-pub(crate) struct PlaylistIsDefaultEventHandler {
-    ws_server: Addr<ChatServer>,
-}
-
-impl PlaylistIsDefaultEventHandler {
-    pub(crate) fn new(ws_server: Addr<ChatServer>) -> Self {
-        Self { ws_server }
-    }
-}
+struct HandleDefaultSet;
 
 #[orsomafo::async_trait]
-impl orsomafo::EventHandler for PlaylistIsDefaultEventHandler {
+impl orsomafo::EventHandler for HandleDefaultSet {
     async fn handle(&self, dispatched: &orsomafo::DispatchedEvent) {
         if let Some(event) = dispatched.the_event::<PlaylistIsDefaultEvent>() {
-            self.ws_server.do_send(WebsocketMessage::from(event));
+            if let Some(ws_server) = busybody::helpers::get_type::<Addr<ChatServer>>() {
+                ws_server.do_send(WebsocketMessage::from(event));
+            }
         }
     }
 }

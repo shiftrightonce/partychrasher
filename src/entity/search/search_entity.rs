@@ -1,7 +1,10 @@
 use serde_json::Map;
 use sqlx::{Column, Row};
 
-use crate::entity::{album::AlbumEntity, artist::ArtistEntity, track::TrackEntity, FromSqliteRow};
+use crate::entity::{
+    album::AlbumEntity, artist::ArtistEntity, playlist::PlaylistEntity, track::TrackEntity,
+    FromSqliteRow,
+};
 
 pub(crate) struct SearchHitEntity {
     internal_id: i64,
@@ -141,6 +144,12 @@ impl From<&TrackEntity> for InSearchHitEntityDto {
     }
 }
 
+impl From<TrackEntity> for InSearchHitEntityDto {
+    fn from(value: TrackEntity) -> Self {
+        Self::from(&value)
+    }
+}
+
 impl From<&AlbumEntity> for InSearchHitEntityDto {
     fn from(album: &AlbumEntity) -> Self {
         let keywords = vec![album.title.clone()];
@@ -160,6 +169,12 @@ impl From<&AlbumEntity> for InSearchHitEntityDto {
     }
 }
 
+impl From<AlbumEntity> for InSearchHitEntityDto {
+    fn from(value: AlbumEntity) -> Self {
+        Self::from(&value)
+    }
+}
+
 impl From<&ArtistEntity> for InSearchHitEntityDto {
     fn from(artist: &ArtistEntity) -> Self {
         let keywords = vec![artist.name.clone()];
@@ -176,5 +191,31 @@ impl From<&ArtistEntity> for InSearchHitEntityDto {
             entity_id: artist.id.clone(),
             metadata,
         }
+    }
+}
+
+impl From<&PlaylistEntity> for InSearchHitEntityDto {
+    fn from(playlist: &PlaylistEntity) -> Self {
+        let keywords = vec![playlist.name.clone()];
+        let mut metadata = Map::new();
+        metadata.insert("name".to_string(), playlist.name.clone().into());
+        let mut playlist_metadata = serde_json::Map::new();
+        playlist_metadata.insert(
+            "description".to_string(),
+            playlist.description.clone().into(),
+        );
+        metadata.insert("entity_metadata".to_string(), playlist_metadata.into());
+        Self {
+            keywords,
+            entity: "playlist".to_string(),
+            entity_id: playlist.id.clone(),
+            metadata,
+        }
+    }
+}
+
+impl From<PlaylistEntity> for InSearchHitEntityDto {
+    fn from(value: PlaylistEntity) -> Self {
+        Self::from(&value)
     }
 }

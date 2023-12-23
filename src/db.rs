@@ -20,7 +20,7 @@ use crate::{
 pub(crate) type DbConnection = SqlitePool;
 
 pub(crate) async fn setup_db_connection(config: &Config) -> Arc<DbManager> {
-    let db = format!("{}/data.db", &config.db_path());
+    let db: String = format!("{}/data.db", &config.db_path());
     let option = SqliteConnectOptions::from_str(&db)
         .unwrap()
         .foreign_keys(true)
@@ -33,7 +33,12 @@ pub(crate) async fn setup_db_connection(config: &Config) -> Arc<DbManager> {
         .connect_with(option)
         .await
     {
-        Ok(pool) => Arc::new(DbManager::new(pool).await),
+        Ok(pool) => {
+            let db_manager = Arc::new(DbManager::new(pool).await);
+
+            busybody::helpers::service_container().set_type(db_manager.clone());
+            db_manager
+        }
         Err(e) => {
             panic!("could not setup db: {:?}", e)
         }

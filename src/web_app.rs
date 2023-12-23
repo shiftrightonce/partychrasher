@@ -8,12 +8,7 @@ static UI_EMBEDDED_ASSETS: Dir = include_dir!("./ui/app/dist/spa");
 use crate::{
     config::Config,
     db::DbManager,
-    entity::{
-        client::ClientEntity,
-        playlist_tracks::{
-            PlaylistIsDefaultEvent, PlaylistTrackAddedEvent, PlaylistTrackRemovedEvent,
-        },
-    },
+    entity::client::ClientEntity,
     player::PlayerCommand,
     queue_manager::QueueManagerCommand,
     websocket::{server, websocket_message::WebsocketMessage},
@@ -28,9 +23,6 @@ use self::{
     admin::handle_admin_command,
     api_response::ApiResponse,
     docs::dev_docs_index_handler,
-    event_handler::{
-        PlaylistIsDefaultEventHandler, PlaylistTrackAddedHandler, PlaylistTrackRemovedHandler,
-    },
     query::{handle_get_playlist_query, handle_next_query, handle_previous_query},
     user::handle_user_command,
 };
@@ -40,9 +32,9 @@ mod api;
 mod api_response;
 mod auth_middleware;
 mod docs;
-mod event_handler;
 mod query;
 mod user;
+pub(crate) mod web_app_event_handler;
 
 pub(crate) async fn start_webapp(
     config: &Config,
@@ -57,17 +49,8 @@ pub(crate) async fn start_webapp(
     let server = server::ChatServer::new(app_state.clone()).start();
     let server_copy = server.clone();
 
-    // events' handlers
-    orsomafo::EventDispatcherBuilder::new()
-        .listen_with::<PlaylistTrackAddedEvent>(PlaylistTrackAddedHandler::new(server_copy.clone()))
-        .listen_with::<PlaylistTrackRemovedEvent>(PlaylistTrackRemovedHandler::new(
-            server_copy.clone(),
-        ))
-        .listen_with::<PlaylistIsDefaultEvent>(PlaylistIsDefaultEventHandler::new(
-            server_copy.clone(),
-        ))
-        .build()
-        .await;
+    // share a copy with the rest of the app
+    busybody::helpers::register_type(server_copy.clone());
 
     std::thread::spawn(move || loop {
         if let Ok(msg) = b_receiver.try_recv() {

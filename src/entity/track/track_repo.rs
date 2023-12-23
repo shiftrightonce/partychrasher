@@ -1,4 +1,5 @@
 use futures::stream::TryStreamExt;
+use orsomafo::Dispatchable;
 use sqlx::sqlite::SqliteRow;
 use sqlx::Row;
 use ulid::Ulid;
@@ -6,6 +7,7 @@ use ulid::Ulid;
 use crate::db::{DbConnection, Paginator, PaginatorDirection};
 use crate::entity::FromSqliteRow;
 
+use super::track_event::{TrackAddedEvent, TrackDeletedEvent, TrackUpdatedEvent};
 use super::{InTrackEntityDto, TrackEntity};
 
 pub(crate) struct TrackRepo {
@@ -70,17 +72,26 @@ impl TrackRepo {
 
         let id = Ulid::new().to_string().to_lowercase();
 
-        if let Err(e) = sqlx::query(sql)
+        if sqlx::query(sql)
             .bind(&id)
             .bind(entity.title)
             .bind(entity.media_id.unwrap_or_default())
             .bind(entity.metadata.unwrap_or_default().to_string())
             .execute(self.pool())
             .await
+            .is_ok()
         {
-            dbg!(e.to_string());
-        } else {
-            return self.find_by_id(&id).await;
+            let result = self.find_by_id(&id).await;
+
+            // Dispatch track added event
+            if result.is_some() {
+                (TrackAddedEvent {
+                    track_id: result.as_ref().unwrap().id.clone(),
+                })
+                .dispatch_event();
+            }
+
+            return result;
         }
 
         None
@@ -112,7 +123,17 @@ impl TrackRepo {
                 .await
                 .is_ok()
             {
-                return self.find_by_id(id).await;
+                let result = self.find_by_id(id).await;
+
+                if result.is_some() {
+                    // Dispatch track updated event
+                    (TrackUpdatedEvent {
+                        track_id: result.as_ref().unwrap().id.clone(),
+                    })
+                    .dispatch_event();
+                }
+
+                return result;
             }
         }
 
@@ -123,6 +144,12 @@ impl TrackRepo {
         let sql = "DELETE FROM tracks WHERE id = ?";
         if let Some(track) = self.find_by_id(id).await {
             if sqlx::query(sql).bind(id).execute(self.pool()).await.is_ok() {
+                // Dispatch track deleted event
+                (TrackDeletedEvent {
+                    track_id: track.id.clone(),
+                })
+                .dispatch_event();
+
                 return Some(track);
             }
         }

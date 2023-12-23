@@ -1,4 +1,5 @@
 use futures::stream::TryStreamExt;
+use orsomafo::Dispatchable;
 use sqlx::sqlite::SqliteRow;
 use ulid::Ulid;
 
@@ -7,7 +8,7 @@ use crate::{
     entity::FromSqliteRow,
 };
 
-use super::{ArtistEntity, InArtistEntityDto};
+use super::{ArtistAddedEvent, ArtistEntity, ArtistUpdatedEvent, InArtistEntityDto};
 
 pub(crate) struct ArtistRepo {
     pool: DbConnection,
@@ -47,7 +48,17 @@ impl ArtistRepo {
             .await
             .is_ok()
         {
-            return self.find_by_id(&id).await;
+            let result = self.find_by_id(&id).await;
+
+            // Dispatch artist created event
+            if result.is_some() {
+                (ArtistAddedEvent {
+                    artist_id: result.as_ref().unwrap().id.clone(),
+                })
+                .dispatch_event();
+            }
+
+            return result;
         }
 
         None
@@ -64,7 +75,17 @@ impl ArtistRepo {
                 .await
                 .is_ok()
             {
-                return self.find_by_id(id).await;
+                let result = self.find_by_id(id).await;
+
+                // Dispatch artist updated event
+                if result.is_some() {
+                    (ArtistUpdatedEvent {
+                        artist_id: result.as_ref().unwrap().id.clone(),
+                    })
+                    .dispatch_event();
+                }
+
+                return result;
             }
         }
 

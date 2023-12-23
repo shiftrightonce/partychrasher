@@ -7,6 +7,7 @@ mod cli;
 mod config;
 mod db;
 mod entity;
+mod event_registry;
 mod helper;
 mod output;
 mod player;
@@ -28,7 +29,7 @@ PARTY_CLIENT_TOKEN="client_token"
 PARTY_DEFAULT_PLAYLIST="playlist_id"
 PARTY_HTTP_HOST=127.0.0.1
 PARTY_HTTP_PORT=8080
-PARTY_DB_LOCATION="./db/data.db"
+PARTY_DB_LOCATION="./db"
 PARTY_STATIC_LOCATION="./static"
 PARTY_AUDIO_FORMAT="mp3,aac,m4a,wav,ogg,wma,webm,flac"
 PARTY_VIDEO_FORMAT="mp4"
@@ -49,7 +50,9 @@ async fn main() {
         }
     }
     pretty_env_logger::init();
-    orsomafo::EventDispatcherBuilder::new().build().await;
+
+    // Register events' handlers
+    event_registry::register_handlers().await;
 
     let mut config_builder = ConfigBuilder::new();
     let cli = Cli::parse();
