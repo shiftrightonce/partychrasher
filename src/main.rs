@@ -9,7 +9,6 @@ mod db;
 mod entity;
 mod event_registry;
 mod helper;
-mod output;
 mod player;
 mod queue_manager;
 mod scanner;
@@ -18,7 +17,10 @@ mod thread_channels;
 mod web_app;
 mod websocket;
 
+mod output;
+
 #[cfg(not(target_os = "linux"))]
+#[cfg(feature = "server-play")]
 mod resampler;
 
 const DEFAULT_DOTENV: &str = r#"

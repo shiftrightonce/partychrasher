@@ -1,3 +1,5 @@
+#![allow(dead_code, unused)]
+
 use std::{fs::File, path::Path};
 
 use symphonia::core::codecs::FinalizeResult;
@@ -322,6 +324,7 @@ fn play_track(
                     let duration = decoded.capacity() as u64;
 
                     // Try to open the audio output.
+                    #[cfg(feature = "server-play")]
                     audio_output.replace(output::try_open(spec, duration).unwrap());
                 } else {
                     // TODO: Check the audio spec. and duration hasn't changed.

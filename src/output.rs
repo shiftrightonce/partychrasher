@@ -1,3 +1,4 @@
+#![allow(dead_code, unused)]
 // Symphonia
 // Copyright (c) 2019-2022 The Project Symphonia Developers.
 //
@@ -29,6 +30,7 @@ pub enum AudioOutputError {
 pub type Result<T> = result::Result<T, AudioOutputError>;
 
 #[cfg(target_os = "linux")]
+#[cfg(feature = "server-play")]
 mod pulseaudio {
     use super::{AudioOutput, AudioOutputError, Result};
 
@@ -169,6 +171,7 @@ mod pulseaudio {
 }
 
 #[cfg(not(target_os = "linux"))]
+#[cfg(feature = "server-play")]
 mod cpal {
     use crate::resampler::Resampler;
 
@@ -369,6 +372,7 @@ mod cpal {
 }
 
 #[cfg(target_os = "linux")]
+#[cfg(feature = "server-play")]
 pub fn try_open(spec: SignalSpec, duration: Duration) -> Result<Box<dyn AudioOutput>> {
     pulseaudio::PulseAudioOutput::try_open(spec, duration)
 }

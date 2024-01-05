@@ -1,3 +1,5 @@
+#![allow(dead_code, unused)]
+
 use crate::{
     cli,
     config::Config,
@@ -19,7 +21,7 @@ pub(crate) fn setup_threads(
 
     let manager_tx = queue_manager::setup_queue_manager(cmd_tx.clone());
 
-    // TODO: First check if we should have the cli running
+    #[cfg(feature = "server-play")]
     if config.is_cli_enabled() {
         setup_cli_thread(cmd_tx.clone());
     }

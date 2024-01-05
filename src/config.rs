@@ -124,8 +124,16 @@ impl ConfigBuilder {
         Self::default()
     }
 
+    #[cfg(feature = "server-play")]
     pub(crate) fn enable_cli(mut self, enable: bool) -> Self {
         self.enable_cli = Some(enable);
+
+        self
+    }
+
+    #[cfg(not(feature = "server-play"))]
+    pub(crate) fn enable_cli(mut self, _: bool) -> Self {
+        self.enable_cli = Some(false);
 
         self
     }
