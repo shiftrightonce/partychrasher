@@ -378,6 +378,7 @@ pub fn try_open(spec: SignalSpec, duration: Duration) -> Result<Box<dyn AudioOut
 }
 
 #[cfg(not(target_os = "linux"))]
+#[cfg(feature = "server-play")]
 pub fn try_open(spec: SignalSpec, duration: Duration) -> Result<Box<dyn AudioOutput>> {
     cpal::CpalAudioOutput::try_open(spec, duration)
 }
