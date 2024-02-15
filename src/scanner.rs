@@ -227,14 +227,18 @@ async fn lofty_tag_processor(
             metadata = MediaMetadata::from(tag);
 
             for a_picture in tag.pictures() {
-                let extension = match a_picture.mime_type() {
-                    MimeType::Png => ".png",
-                    MimeType::Jpeg => ".jpg",
-                    MimeType::Tiff => ".jpg",
-                    MimeType::Bmp => ".bmp",
-                    MimeType::Gif => ".gif",
-                    MimeType::Unknown(t) => t.as_str(),
-                    _ => "",
+                let extension = if a_picture.mime_type().is_some() {
+                    match a_picture.mime_type().unwrap() {
+                        MimeType::Png => ".png",
+                        MimeType::Jpeg => ".jpg",
+                        MimeType::Tiff => ".jpg",
+                        MimeType::Bmp => ".bmp",
+                        MimeType::Gif => ".gif",
+                        MimeType::Unknown(t) => t.as_str(),
+                        _ => "",
+                    }
+                } else {
+                    ""
                 };
 
                 let pic_type = a_picture.pic_type();
